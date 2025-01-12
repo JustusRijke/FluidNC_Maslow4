@@ -9,7 +9,11 @@
 #include "Pins/PinOptionsParser.h"
 #include "Pins/GPIOPinDetail.h"
 #include "Pins/VoidPinDetail.h"
-#include "Pins/I2SOPinDetail.h"
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        // I2S not (yet) implemented for ESP32-S3
+#else
+#include "Pins/I2SOPinDetail.h" // I2S not (yet) implemented for ESP32-S3
+#endif
 #include "Pins/ChannelPinDetail.h"
 #include "Pins/ErrorPinDetail.h"
 #include "string_util.h"
@@ -77,10 +81,15 @@ const char* Pin::parse(std::string_view pin_str, Pins::PinDetail*& pinImplementa
         pinImplementation = new Pins::GPIOPinDetail(static_cast<pinnum_t>(pin_number), parser);
         return nullptr;
     }
+    
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        // I2S not (yet) implemented for ESP32-S3
+#else
     if (string_util::equal_ignore_case(prefix, "i2so")) {
         pinImplementation = new Pins::I2SOPinDetail(static_cast<pinnum_t>(pin_number), parser);
         return nullptr;
     }
+#endif
 
     if (string_util::starts_with_ignore_case(prefix, "uart_channel")) {
         auto num_str     = prefix.substr(strlen("uart_channel"));

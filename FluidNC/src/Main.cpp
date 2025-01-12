@@ -74,9 +74,13 @@ void setup() {
             }
         }
 
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        // I2S not (yet) implemented for ESP32-S3
+#else
         if (config->_i2so) {
             config->_i2so->init();
         }
+#endif
         if (config->_spi) {
             config->_spi->init();
 

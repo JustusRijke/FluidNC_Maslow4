@@ -48,7 +48,11 @@ namespace Machine {
         handler.section("uart_channel1", _uart_channels[1], 1);
         handler.section("uart_channel2", _uart_channels[2], 2);
 
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        // I2S not (yet) implemented for ESP32-S3
+#else
         handler.section("i2so", _i2so);
+#endif
 
         handler.section("i2c0", _i2c[0], 0);
         handler.section("i2c1", _i2c[1], 1);
