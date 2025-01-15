@@ -1,10 +1,22 @@
 // Copyright (c) 2023 -  Mitch Bradley
+// Copyright (c) 2023 -  Stefan de Bruijn
 // Use of this source code is governed by a GPLv3 license that can be found in the LICENSE file.
 
 #include "UartChannel.h"
 #include "Machine/MachineConfig.h"  // config
 #include "Serial.h"                 // allChannels
 
+#if ARDUINO_USB_CDC_ON_BOOT==1
+UartChannel::UartChannel(int num, bool addCR) : Channel("usbcdc", num, addCR) {
+    _lineedit = new Lineedit(this, _line, Channel::maxLine - 1);
+    _active   = false;
+    _uart     = &Serial;
+}
+
+void UartChannel::init() {
+    allChannels.registration(this);
+}
+#else
 UartChannel::UartChannel(int num, bool addCR) : Channel("uart_channel", num, addCR) {
     _lineedit = new Lineedit(this, _line, Channel::maxLine - 1);
     _active   = false;
@@ -29,6 +41,7 @@ void UartChannel::init(Uart* uart) {
     }
     log_msg_to(*this, "RST");
 }
+#endif
 
 size_t UartChannel::write(uint8_t c) {
     return _uart->write(c);
@@ -71,7 +84,13 @@ int UartChannel::peek() {
 }
 
 int UartChannel::rx_buffer_available() {
+#if ARDUINO_USB_CDC_ON_BOOT==1
+    // ESP32-S3 CDC buffer availability (fixed size buffer)
+    return 64-_uart->available();
+#else
+    // Original ESP32 UART buffer availability (dynamic)
     return _uart->rx_buffer_available();
+#endif
 }
 
 bool UartChannel::realtimeOkay(char c) {
@@ -91,16 +110,22 @@ bool UartChannel::lineComplete(char* line, char c) {
 
 int UartChannel::read() {
     int c = _uart->read();
+#if ARDUINO_USB_CDC_ON_BOOT==0
+    // Only original ESP32 handles XON/XOFF software flow control
     if (c == 0x11) {
         // 0x11 is XON.  If we receive that, it is a request to use software flow control
         _uart->setSwFlowControl(true, -1, -1);
         return -1;
     }
+#endif
     return c;
 }
 
 void UartChannel::flushRx() {
+#if ARDUINO_USB_CDC_ON_BOOT==0
+    // Only original ESP32 requires explicit RX buffer flushing
     _uart->flushRx();
+#endif
     Channel::flushRx();
 }
 
@@ -114,7 +139,18 @@ size_t UartChannel::timedReadBytes(char* buffer, size_t length, TickType_t timeo
         _queue.pop();
     }
 
+#if ARDUINO_USB_CDC_ON_BOOT==1
+    // ESP32-S3 timed read with available bytes check
+    int avail = _uart->available();
+    if (avail > remlen) {
+        avail = remlen;
+    }
+    
+    int res = int(_uart->read(buffer, remlen));
+#else
+    // Original ESP32 timed read using UART method
     int res = _uart->timedReadBytes(buffer, remlen, timeout);
+#endif
     // If res < 0, no bytes were read
     remlen -= (res < 0) ? 0 : res;
     return length - remlen;
@@ -132,7 +168,14 @@ void UartChannel::out_acked(const std::string& s, const char* tag) {
 UartChannel Uart0(0, true);  // Primary serial channel with LF to CRLF conversion
 
 void uartInit() {
+#if ARDUINO_USB_CDC_ON_BOOT==1
+    // ESP32-S3 initialization using USB CDC
+    Uart0.init();
+    Serial.begin(115200);
+#else
+    // Original ESP32 initialization using UART interface
     auto uart0 = new Uart(0);
     uart0->begin(BAUD_RATE, UartData::Bits8, UartStop::Bits1, UartParity::None);
     Uart0.init(uart0);
+#endif
 }

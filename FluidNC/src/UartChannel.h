@@ -3,6 +3,12 @@
 
 #pragma once
 
+#if ARDUINO_USB_CDC_ON_BOOT==1
+#include <USB.h>
+#include <USBCDC.h>
+#include <HWCDC.h>
+#endif
+
 #include "Uart.h"
 #include "Channel.h"
 #include "lineedit.h"
@@ -10,7 +16,12 @@
 class UartChannel : public Channel, public Configuration::Configurable {
 private:
     Lineedit* _lineedit;
+
+#if ARDUINO_USB_CDC_ON_BOOT==1
+    HWCDC*    _uart;
+#else
     Uart*     _uart;
+#endif
 
     int _uart_num           = 0;
     int _report_interval_ms = 0;
