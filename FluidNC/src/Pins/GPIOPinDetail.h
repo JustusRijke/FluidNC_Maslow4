@@ -19,7 +19,11 @@ namespace Pins {
         static void gpioAction(int, void*, int);
 
     public:
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        static const int nGPIOPins = 49;
+#else
         static const int nGPIOPins = 40;
+#endif
 
         GPIOPinDetail(pinnum_t index, PinOptionsParser options);
 

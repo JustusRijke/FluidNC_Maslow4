@@ -15,6 +15,16 @@ namespace Pins {
     std::vector<bool> GPIOPinDetail::_claimed(nGPIOPins, false);
 
     PinCapabilities GPIOPinDetail::GetDefaultCapabilities(pinnum_t index) {
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+        if ((index >= 0 && index <= 21) || (index >= 35 && index <= 48)) {
+            return PinCapabilities::Native | PinCapabilities::Input | PinCapabilities::Output | PinCapabilities::PullUp |
+                   PinCapabilities::PullDown | PinCapabilities::PWM | PinCapabilities::ISR | PinCapabilities::UART |
+                   (index <= 20 ? PinCapabilities::ADC : PinCapabilities::None);
+        } else {
+            // Not mapped to actual GPIO pins
+            return PinCapabilities::None;
+        }
+#else
         // See https://randomnerdtutorials.com/esp32-pinout-reference-gpios/ for an overview:
         switch (index) {
             case 0:  // Outputs PWM signal at boot
@@ -80,6 +90,7 @@ namespace Pins {
             default:  // Not mapped to actual GPIO pins
                 return PinCapabilities::None;
         }
+#endif
     }
 
     GPIOPinDetail::GPIOPinDetail(pinnum_t index, PinOptionsParser options) :
