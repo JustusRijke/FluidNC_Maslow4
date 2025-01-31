@@ -26,6 +26,9 @@ kinematics:
   Cartesian:
 
 axes:
+  # The stepper disable pin is low when motors are moving; invert it to control the PCB fan.
+  shared_stepper_disable_pin: gpio.47:low
+
   x:
     motor0:
       null_motor:
