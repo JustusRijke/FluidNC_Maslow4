@@ -64,7 +64,7 @@ protected:
     uint8_t     _lastTool         = 0;
     float       _lastSpindleSpeed = 0;
     float       _lastFeedRate     = 0;
-    State       _lastState        = State::Idle;
+    const char* _lastStateName    = "";
     MotorMask   _lastLimits       = 0;
     bool        _lastProbe        = false;
     bool        _lastJobActive    = false;
@@ -81,7 +81,8 @@ protected:
 
     UTF8 _utf8;
 
-    bool _ended = false;
+    bool _ended   = false;
+    bool _percent = false;
 
 protected:
     bool _active = true;
@@ -180,6 +181,7 @@ public:
     void push(const std::string& s) { push(reinterpret_cast<const uint8_t*>(s.c_str()), s.length()); }
 
     void end() { _ended = true; }
+    void percent() { _percent = true; }
 
     // Pin extender functions
     virtual void out(const char* s, const char* tag);

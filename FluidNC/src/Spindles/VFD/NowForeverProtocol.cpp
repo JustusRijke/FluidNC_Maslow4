@@ -69,7 +69,7 @@ namespace Spindles {
             log_debug("VFD: Set speed: " << hz / 100 << "hz or" << (hz * 60 / 100) << "rpm");
         }
 
-        VFDProtocol::response_parser NowForeverProtocol::initialization_sequence(int index, ModbusCommand& data) {
+        VFDProtocol::response_parser NowForeverProtocol::initialization_sequence(int index, ModbusCommand& data, VFDSpindle* vfd) {
             if (index == -1) {
                 data.tx_length = 6;
                 data.rx_length = 7;
@@ -81,12 +81,12 @@ namespace Spindles {
                 data.msg[5] = 0x02;  // Number of elements, low byte (2 elements)
 
                 /*
-            Contents of register 0x0007
-            Bit 0-15: max speed in hz * 100
+                Contents of register 0x0007
+                Bit 0-15: max speed in hz * 100
 
-            Contents of register 0x0008
-            Bit 0-15: min speed in hz * 100
-            */
+                Contents of register 0x0008
+                Bit 0-15: min speed in hz * 100
+                */
 
                 return [](const uint8_t* response, VFDSpindle* vfd, VFDProtocol* detail) -> bool {
                     if (response[1] != 0x03) {

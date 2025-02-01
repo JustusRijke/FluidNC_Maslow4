@@ -56,7 +56,7 @@ namespace Spindles {
             data.msg[5] = speed & 0xFF;
         }
 
-        VFDProtocol::response_parser H2AProtocol::initialization_sequence(int index, ModbusCommand& data) {
+        VFDProtocol::response_parser H2AProtocol::initialization_sequence(int index, ModbusCommand& data, VFDSpindle* vfd) {
             if (index == -1) {
                 data.tx_length = 6;
                 data.rx_length = 8;
@@ -67,7 +67,7 @@ namespace Spindles {
                 data.msg[3] = 0x05;
                 data.msg[4] = 0x00;  // Read 2 values
                 data.msg[5] = 0x02;
-
+                    
                 //  Recv: 01 03 00 04 5D C0 03 F6
                 //                    -- -- = 24000 (val #1)
                 return [](const uint8_t* response, VFDSpindle* vfd, VFDProtocol* detail) -> bool {
