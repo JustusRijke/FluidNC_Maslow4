@@ -22,6 +22,8 @@
 #include "Job.h"
 #include "Driver/restart.h"
 
+#include "Maslow/Maslow.h"
+
 volatile ExecAlarm lastAlarm;  // The most recent alarm code
 
 volatile const char* unwind_cause = nullptr;
@@ -853,6 +855,8 @@ void protocol_exec_rt_system() {
     }
 
     protocol_handle_events();
+
+    Maslow::instance().cycle();
 
     // Reload step segment buffer
     switch (sys.state) {

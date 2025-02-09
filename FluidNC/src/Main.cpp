@@ -25,6 +25,8 @@
 
 #    include "src/ToolChangers/atc.h"
 
+#    include "Maslow/Maslow.h"
+
 extern void make_user_commands();
 
 void setup() {
@@ -134,6 +136,8 @@ void setup() {
             config->_coolant->init();
             config->_probe->init();
         }
+
+        Maslow::instance().init();
 
     } catch (const AssertionFailed& ex) {
         // This means something is terribly broken:
