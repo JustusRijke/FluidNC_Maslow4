@@ -6,9 +6,12 @@
 #include "../Logging.h"
 #include "hal/I2CSwitch.h"
 
+// TODO: Remove after debugging
+extern TaskHandle_t maslowTaskHandle;
+
 // Private namespace for local constants (prefered over #define)
 namespace {
-    constexpr uint32_t MS_PER_CYCLE = 1;  // Expected time between consecutive calls to cycle()
+    constexpr uint32_t MS_PER_CYCLE = 5;  // Expected time between consecutive calls to cycle()
 }
 
 // Returns the single instance of Maslow.
@@ -47,9 +50,9 @@ void Maslow::cycle() {
     // Cycle time measurement
     //_cycle_stats.track_cycles();
 
+    // For debugging: combine all positions so changes are easy to see in the terminal
     position = 0;
     for (size_t i = 0; i < _encoders.size(); ++i) {
-        // encoderPositions += std::to_string(i) + ": " + std::to_string(_encoders[i].get_position()) + " ";
         position += _encoders[i].get_position();
     }
 
@@ -63,10 +66,14 @@ void Maslow::cycle() {
             break;
         case State::Report:
             log_state_change("Entered state 'Report'");
-            if ((_sm.state_changed) || (_sm.time_in_state() > 2000)) {
-                log_info("Raw angle: " << position);
-                // log_info("Raw angle: " << encoderPositions);
+            if ((_sm.state_changed) || (_sm.time_in_state() > 1000)) {
                 _sm.reset_time_in_state();
+
+                log_info("Raw angle: " << position);
+
+                // Log Maslow task stack size for debugging
+                UBaseType_t stackHWM_Words = uxTaskGetStackHighWaterMark(maslowTaskHandle);
+                log_info("Maslow task stack High Water Mark (HWM): " << stackHWM_Words << " bytes free");
             }
             break;
         case State::FatalError:

@@ -25,9 +25,33 @@
 
 #    include "src/ToolChangers/atc.h"
 
+#    include "freertos/FreeRTOS.h"
+#    include "freertos/task.h"
 #    include "Maslow/Maslow.h"
 
 extern void make_user_commands();
+
+// TODO: Remove after debugging
+TaskHandle_t maslowTaskHandle = NULL;
+
+// Task function for Maslow
+void maslow_task_function(void* pvParameters) {
+    const TickType_t xFrequency = pdMS_TO_TICKS(5);  // 5 milliseconds
+    TickType_t       xLastWakeTime;
+
+    // Initialise the xLastWakeTime variable with the current time.
+    xLastWakeTime = xTaskGetTickCount();
+
+    log_info("Maslow Task Started");  // Optional: Log task start
+
+    for (;;) {  // Infinite loop for the task
+        // Wait for the next cycle.
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        // Call the Maslow cycle function
+        Maslow::instance().cycle();
+    }
+}
 
 void setup() {
     disableCore0WDT();
@@ -138,7 +162,22 @@ void setup() {
         }
 
         make_proxies();
+
         Maslow::instance().init();
+
+        // Create the Maslow task
+        BaseType_t xReturned = xTaskCreatePinnedToCore(
+            maslow_task_function,
+            "MaslowTask",
+            4096,  // Stack size in words (TODO: adjust as needed).
+            NULL,  // Parameter passed into the task.
+            3,     // Priority at which the task is created. Assumption: more important than the protocol polling & output loops.
+            &maslowTaskHandle,  // TODO: Replace with NULL after debugging
+            SUPPORT_TASK_CORE);
+
+        if (xReturned != pdPASS) {
+            log_error("Failed to create Maslow Task");
+        }
 
     } catch (const AssertionFailed& ex) {
         // This means something is terribly broken:
