@@ -11,7 +11,8 @@ extern TaskHandle_t maslowTaskHandle;
 
 // Private namespace for local constants (prefered over #define)
 namespace {
-    constexpr uint32_t MS_PER_CYCLE = 5;  // Expected time between consecutive calls to cycle()
+    constexpr uint32_t MS_PER_CYCLE = 5;     // [ms] Expected time between consecutive calls to cycle()
+    constexpr uint32_t REPORT_DELAY = 5000;  // [ms] Time between reporting stuff to the console
 }
 
 // Returns the single instance of Maslow.
@@ -64,9 +65,10 @@ void Maslow::cycle() {
             // Entry point logic: do nothing but move to an initial state.
             _sm.state = State::Report;
             break;
+
         case State::Report:
             log_state_change("Entered state 'Report'");
-            if ((_sm.state_changed) || (_sm.time_in_state() > 1000)) {
+            if ((_sm.state_changed) || (_sm.time_in_state() > REPORT_DELAY)) {
                 _sm.reset_time_in_state();
 
                 log_info("Raw angle: " << position);
@@ -76,14 +78,25 @@ void Maslow::cycle() {
                 log_info("Maslow task stack High Water Mark (HWM): " << stackHWM_Words << " bytes free");
             }
             break;
+
+        case State::Test:
+            log_state_change("Entered state 'Test'");
+            if (_sm.time_in_state() > 3000) {
+                log_info("Test state timeout, moving to Report state");
+                _sm.state = State::Report;
+            }
+            break;
+
         case State::FatalError:
             // TODO - Add code to handle fatal error, e.g. stop motors, turn off power, etc.
             break;
+
         case State::Undefined:
             // Oops, we should never end up here. Fatal programming error.
             log_error("Entered undefined state");
             _sm.state = State::FatalError;
             break;
+
         default:
             _sm.state = State::Undefined;
             break;
@@ -95,4 +108,11 @@ inline void Maslow::log_state_change(const char* msg) {
     if (_sm.state_changed) {
         log_info(std::string("Maslow: ") + msg);
     }
+}
+
+// External function to request a state change.
+void Maslow::request_state_change(State new_state) {
+    // Add conditional logic here if needed, for example
+    // check if the new state is valid or if the current state allows the transition.
+    _sm.state = new_state;
 }

@@ -26,6 +26,8 @@
 #include "FluidPath.h"
 #include "HashFS.h"
 
+#include "Maslow/Maslow.h"
+
 #include <cstring>
 #include <map>
 #include <filesystem>
@@ -898,6 +900,13 @@ static Error showHeap(const char* value, AuthenticationLevel auth_level, Channel
     return Error::Ok;
 }
 
+// Maslow user commands
+static Error maslowTest(const char* value, AuthenticationLevel auth_level, Channel& out) {
+    log_info("Test called!");
+    Maslow::instance().request_state_change(Maslow::State::Test);
+    return Error::Ok;
+}
+
 // Commands use the same syntax as Settings, but instead of setting or
 // displaying a persistent value, a command causes some action to occur.
 // That action could be anything, from displaying a run-time parameter
@@ -964,6 +973,9 @@ void make_user_commands() {
 
     new AsyncUserCommand("J", "Jog", doJog, notIdleOrJog);
     new AsyncUserCommand("G", "GCode/Modes", report_gcode, anyState);
+
+    // Maslow commands
+    new UserCommand("Test", "Maslow/Test", maslowTest, anyState);
 };
 
 // normalize_key puts a key string into canonical form -

@@ -11,7 +11,7 @@
 
 class Maslow {
 public:
-    enum class State : uint16_t { Undefined, Entrypoint, Report, FatalError };
+    enum class State : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
 
     static Maslow& instance();  // Get the singleton instance
 
@@ -21,6 +21,8 @@ public:
     // Delete copy constructor and assignment operator
     Maslow(const Maslow&)            = delete;
     Maslow& operator=(const Maslow&) = delete;
+
+    void request_state_change(State new_state);
 
 private:
     Maslow();  // Private constructor (singleton restriction)
