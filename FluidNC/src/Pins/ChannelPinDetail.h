@@ -5,28 +5,30 @@
 
 #include "PinDetail.h"
 #include "PinOptionsParser.h"
-#include "src/Channel.h"
+#include "src/UartChannel.h"
 #include "../Logging.h"
 
 namespace Pins {
     class ChannelPinDetail : public PinDetail {
     private:
-        Channel*      _channel;
+        UartChannel*  _channel;
         PinAttributes _attributes;
         bool          _value = false;
 
     public:
-        ChannelPinDetail(Channel* channel, int number, const PinOptionsParser& options);
+        ChannelPinDetail(UartChannel* channel, int number, const PinOptionsParser& options);
 
         PinCapabilities capabilities() const override;
 
         // I/O:
         void          write(int high) override;
         int           read() override;
-        void          setAttr(PinAttributes value) override;
+        void          setAttr(PinAttributes value, uint32_t frequency = 0) override;
         PinAttributes getAttr() const override;
+        void          setDuty(uint32_t duty) override;
+        uint32_t      maxDuty() override;
 
-        void registerEvent(EventPin* obj) override;
+        void registerEvent(InputPin* obj) override;
 
         std::string toString() override;
 

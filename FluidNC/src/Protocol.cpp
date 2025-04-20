@@ -43,6 +43,7 @@ const std::map<ExecAlarm, const char*> AlarmNames = {
     { ExecAlarm::HardStop, "Hard Stop" },
     { ExecAlarm::Unhomed, "Unhomed" },
     { ExecAlarm::Init, "Init" },
+    { ExecAlarm::ExpanderReset, "Expander Reset" },
 };
 
 const char* alarmString(ExecAlarm alarmNumber) {
@@ -391,6 +392,10 @@ static void protocol_run_startup_lines() {
     config->_macros->_startup_line1.run(&allChannels);
 }
 
+static void protocol_do_start_homing(){
+    Machine::Homing::run_cycles(Machine::Homing::AllCycles);
+}
+
 static void protocol_do_soft_restart() {
     // Reset primary systems.
     system_reset();
@@ -467,6 +472,12 @@ static void protocol_do_alarm(void* alarmVoid) {
     // It is important to do set_state() before alarm_msg() because the
     // latter can cause a task switch that can introduce a race condition
     // whereby polling_loop() does not see the state change.
+    if (lastAlarm == ExecAlarm::ExpanderReset) {
+        set_state(State::Critical);  // Set system alarm state
+        alarm_msg(lastAlarm);
+        report_error_message(Message::MustReboot);
+        return;
+    }
     if (lastAlarm == ExecAlarm::HardLimit || lastAlarm == ExecAlarm::HardStop) {
         protocol_disable_steppers();
         Homing::set_all_axes_unhomed();
@@ -1116,6 +1127,19 @@ void protocol_do_rt_reset() {
     protocol_send_event(&restartEvent);
 }
 
+void protocol_do_pin_active(void* vpEventPin) {
+    auto eventPin = static_cast<EventPin*>(vpEventPin);
+    if (eventPin) {  // Safety check; null eventPin should not happen
+        eventPin->trigger(true);
+    }
+}
+void protocol_do_pin_inactive(void* vpEventPin) {
+    auto eventPin = static_cast<EventPin*>(vpEventPin);
+    if (eventPin) {  // Safety check; null eventPin should not happen
+        eventPin->trigger(false);
+    }
+}
+
 const ArgEvent feedOverrideEvent { protocol_do_feed_override };
 const ArgEvent rapidOverrideEvent { protocol_do_rapid_override };
 const ArgEvent spindleOverrideEvent { protocol_do_spindle_override };
@@ -1123,6 +1147,8 @@ const ArgEvent accessoryOverrideEvent { protocol_do_accessory_override };
 const ArgEvent limitEvent { protocol_do_limit };
 const ArgEvent faultPinEvent { protocol_do_fault_pin };
 const ArgEvent reportStatusEvent { (void (*)(void*))report_realtime_status };
+const ArgEvent pinActiveEvent { protocol_do_pin_active };
+const ArgEvent pinInactiveEvent { protocol_do_pin_inactive };
 
 const NoArgEvent safetyDoorEvent { request_safety_door };
 const NoArgEvent feedHoldEvent { protocol_do_feedhold };
@@ -1135,6 +1161,7 @@ const NoArgEvent startEvent { protocol_do_start };
 const NoArgEvent restartEvent { protocol_do_soft_restart };
 const NoArgEvent fullResetEvent { restart };
 const NoArgEvent runStartupLinesEvent { protocol_run_startup_lines };
+const NoArgEvent homingButtonEvent { protocol_do_start_homing };
 
 const NoArgEvent rtResetEvent { protocol_do_rt_reset };
 

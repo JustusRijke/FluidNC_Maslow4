@@ -80,7 +80,7 @@ namespace Configuration {
     void JsonGenerator::item(const char* name, uint32_t& value, const uint32_t minValue, const uint32_t maxValue) {
         enter(name);
         char buf[32];
-        itoa(value, buf, 10);
+        utoa(value, buf, 10);
         _encoder.begin_webui(_currentPath, _currentPath, "I", buf, minValue, maxValue);
         _encoder.end_object();
         leave();
@@ -105,7 +105,11 @@ namespace Configuration {
     void JsonGenerator::item(const char* name, std::vector<float>& value) {}
 
     void JsonGenerator::item(const char* name, UartData& wordLength, UartParity& parity, UartStop& stopBits) {
-        // Not sure if I should comment this out or not. The implementation is similar to the one in Generator.h.
+        enter(name);
+        auto value = encodeUartMode(wordLength, parity, stopBits);
+        _encoder.begin_webui(_currentPath, _currentPath, "S", value.c_str(), 3, 5);
+        _encoder.end_object();
+        leave();
     }
 
     void JsonGenerator::item(const char* name, std::string& value, const int minLength, const int maxLength) {
@@ -122,6 +126,18 @@ namespace Configuration {
         leave();
     }
     void JsonGenerator::item(const char* name, Pin& value) {
+        // We commented this out, because pins are very confusing for users. The code is correct,
+        // but it really gives more support than it's worth.
+        /*
+        enter(name);
+        auto sv = value.name();
+        _encoder.begin_webui(_currentPath, _currentPath, "S", sv.c_str(), 0, 255);
+        _encoder.end_object();
+        leave();
+        */
+    }
+
+    void JsonGenerator::item(const char* name, EventPin& value) {
         // We commented this out, because pins are very confusing for users. The code is correct,
         // but it really gives more support than it's worth.
         /*

@@ -4,7 +4,7 @@
 #include "ChannelPinDetail.h"
 
 namespace Pins {
-    ChannelPinDetail::ChannelPinDetail(Channel* channel, int number, const PinOptionsParser& options) :
+    ChannelPinDetail::ChannelPinDetail(UartChannel* channel, int number, const PinOptionsParser& options) :
         PinDetail(number), _channel(channel) {
         for (auto opt : options) {
             if (opt.is("pu")) {
@@ -27,41 +27,52 @@ namespace Pins {
         if (high == _value) {
             return;
         }
-        _value        = high;
-        std::string s = "io.";
-        s += std::to_string(_index);
-        s += "=";
-        s += std::to_string(high);
-        _channel->out(s, "SET:");
+        _value = high;
+        //        _channel->write(high ? 0xC5 : 0xC4);
+        //        _channel->write(0x80 + _index);
+        _channel->writeUTF8(_index + (high ? Channel::PinHighFirst : Channel::PinLowFirst));
     }
+    uint32_t ChannelPinDetail::maxDuty() {
+        return 1000;
+    }
+    void IRAM_ATTR ChannelPinDetail::setDuty(uint32_t duty) {
+        _channel->writeUTF8(0x10000 + (_index << 10) + duty);
+    }
+
     int ChannelPinDetail::read() {
         return _value;
     }
-    void ChannelPinDetail::setAttr(PinAttributes attr) {
+    void ChannelPinDetail::setAttr(PinAttributes attr, uint32_t frequency) {
         _attributes = _attributes | attr;
 
         std::string s = "io.";
         s += std::to_string(_index);
         s += "=";
-        if (_attributes.has(Pins::PinAttributes::Input)) {
-            s += "inp";
+        if (_attributes.has(Pins::PinAttributes::PWM)) {
+            s += "pwm,frequency=";
+            s += std::to_string(frequency);
+        } else if (_attributes.has(Pins::PinAttributes::Input)) {
+            s += "in";
+            if (_attributes.has(Pins::PinAttributes::PullUp)) {
+                s += ",pu";
+            }
+            if (_attributes.has(Pins::PinAttributes::PullDown)) {
+                s += ",pd";
+            }
         } else if (_attributes.has(Pins::PinAttributes::Output)) {
             s += "out";
         } else {
             return;
         }
-
-        if (_attributes.has(Pins::PinAttributes::PullUp)) {
-            s += ":pu";
-        }
-        if (_attributes.has(Pins::PinAttributes::PullDown)) {
-            s += ":pd";
-        }
         if (_attributes.has(Pins::PinAttributes::ActiveLow)) {
-            s += ":low";
+            s += ",low";
         }
 
-        _channel->setAttr(_index, _attributes.has(Pins::PinAttributes::Input) ? &this->_value : nullptr, s, "INI:");
+        // The second parameter is used to maintain a list of pin values in the Channel
+        Assert(_channel->setAttr(_index, _attributes.has(Pins::PinAttributes::Input) ? &this->_value : nullptr, s),
+               "Expander pin configuration failed: %s %s",
+               _channel->name().c_str(),
+               s.c_str());
     }
     PinAttributes ChannelPinDetail::getAttr() const {
         return _attributes;
@@ -82,7 +93,7 @@ namespace Pins {
         return s;
     }
 
-    void ChannelPinDetail::registerEvent(EventPin* obj) {
+    void ChannelPinDetail::registerEvent(InputPin* obj) {
         _channel->registerEvent(_index, obj);
     }
 }
