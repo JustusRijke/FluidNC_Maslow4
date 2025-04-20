@@ -3,8 +3,9 @@
 
 #include "RuntimeSetting.h"
 
-#include "../Report.h"
-#include "../Protocol.h"  // send_line()
+#include "src/Report.h"
+#include "src/Protocol.h"  // send_line()
+#include "src/string_util.h"
 
 #include <cstdlib>
 #include <atomic>
@@ -105,6 +106,20 @@ namespace Configuration {
             } else {
                 char* floatEnd;
                 value = strtof(newValue_, &floatEnd);
+            }
+        }
+    }
+
+    void RuntimeSetting::item(const char* name, UartData& wordLength, UartParity& parity, UartStop& stopBits) {
+        if (is(name)) {
+            isHandled_ = true;
+            if (newValue_ == nullptr) {
+                log_stream(out_, setting_prefix() << encodeUartMode(wordLength, parity, stopBits));
+            } else {
+                const char* errstr = decodeUartMode(newValue_, wordLength, parity, stopBits);
+                if (*errstr) {
+                    log_error_to(out_, errstr);
+                }
             }
         }
     }
@@ -266,6 +281,19 @@ namespace Configuration {
                     Assert(false, "Expected an IP address like 192.168.0.100");
                 }
                 value = ip;
+            }
+        }
+    }
+
+    void RuntimeSetting::item(const char* name, EventPin& value) {
+        if (is(name)) {
+            isHandled_ = true;
+            if (newValue_ == nullptr) {
+                log_stream(out_, setting_prefix() << value.name());
+            } else {
+                log_string(out_, "Runtime setting of Pin objects is not supported");
+                // auto parsed = Pin::create(newValue);
+                // value.swap(parsed);
             }
         }
     }

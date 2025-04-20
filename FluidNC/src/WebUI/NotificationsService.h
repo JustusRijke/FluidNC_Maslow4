@@ -15,7 +15,7 @@ namespace WebUI {
             _started          = false;
             _notificationType = 0;
             _token1           = "";
-            _token1           = "";
+            _token2           = "";
             _settings         = "";
         }
 
@@ -41,6 +41,7 @@ namespace WebUI {
         static bool  sendPushoverMSG(const char* title, const char* message);
         static bool  sendEmailMSG(const char* title, const char* message);
         static bool  sendLineMSG(const char* title, const char* message);
+        static bool  sendTelegramMSG(const char* title, const char* message);
         static bool  getPortFromSettings();
         static bool  getServerAddressFromSettings();
         static bool  getEmailFromSettings();

@@ -10,6 +10,7 @@
 #include "src/Assert.h"
 #include "src/Config.h"
 #include "src/Machine/EventPin.h"
+#include "src/Protocol.h"
 
 namespace Pins {
     std::vector<bool> GPIOPinDetail::_claimed(nGPIOPins, false);
@@ -159,7 +160,7 @@ namespace Pins {
         return (bool)raw ^ _inverted;
     }
 
-    void GPIOPinDetail::setAttr(PinAttributes value) {
+    void GPIOPinDetail::setAttr(PinAttributes value, uint32_t frequency) {
         // These two assertions will fail if we do them for index 1/3 (Serial uart). This is because
         // they are initialized by HardwareSerial well before we start our main operations. Best to
         // just ignore them for now, and figure this out later. TODO FIXME!
@@ -174,6 +175,12 @@ namespace Pins {
 
         _attributes = _attributes | value;
 
+        if (value.has(PinAttributes::PWM)) {
+            _pwm = new PwmPin(_index, _attributes.has(PinAttributes::ActiveLow), frequency);
+            // _pwm->setDuty(0);  // Unnecessary since new PwmPins start at 0 duty
+            return;
+        }
+
         // If the pin is ActiveLow, we should take that into account here:
         if (value.has(PinAttributes::Output)) {
             gpio_write(_index, int(value.has(PinAttributes::InitialOn)) ^ _inverted);
@@ -187,15 +194,12 @@ namespace Pins {
                   false);  // We do not have an OpenDrain attribute yet
     }
 
-    // This is a callback from the low-level GPIO driver that is invoked after
-    // registerEvent() has been called and the pin becomes active.
-    void GPIOPinDetail::gpioAction(int gpio_num, void* arg, int active) {
-        EventPin* obj = static_cast<EventPin*>(arg);
-        obj->trigger(active);
+    void IRAM_ATTR GPIOPinDetail::setDuty(uint32_t duty) {
+        _pwm->setDuty(duty);
     }
 
-    void GPIOPinDetail::registerEvent(EventPin* obj) {
-        gpio_set_action(_index, gpioAction, reinterpret_cast<void*>(obj), _attributes.has(Pin::Attr::ActiveLow));
+    void GPIOPinDetail::registerEvent(InputPin* obj) {
+        gpio_set_event(_index, reinterpret_cast<void*>(obj), _attributes.has(Pin::Attr::ActiveLow));
     }
 
     std::string GPIOPinDetail::toString() {

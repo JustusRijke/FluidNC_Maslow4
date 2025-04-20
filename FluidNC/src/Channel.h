@@ -33,17 +33,18 @@ class Channel : public Stream {
 private:
     void pin_event(uint32_t pinnum, bool active);
 
+    static constexpr int PinACK = 0xB2;
+    static constexpr int PinNAK = 0xB3;
+    static constexpr int PinRST = 0xB4;
+
+    static constexpr int timeout = 2000;
+
+public:
     static constexpr int PinLowFirst  = 0x100;
     static constexpr int PinLowLast   = 0x13f;
     static constexpr int PinHighFirst = 0x140;
     static constexpr int PinHighLast  = 0x17f;
 
-    static constexpr int PinACK = 0xB2;
-    static constexpr int PinNAK = 0xB3;
-
-    static constexpr int timeout = 2000;
-
-public:
     static constexpr int maxLine = 255;
 
     int _message_level = MsgLevelVerbose;
@@ -76,8 +77,7 @@ protected:
 
     Cmd _last_rt_cmd = Cmd::None;
 
-    std::map<int, EventPin*> _events;
-    std::map<int, bool*>     _pin_values;
+    std::map<int, InputPin*> _pins;
 
     UTF8 _utf8;
 
@@ -86,14 +86,15 @@ protected:
 
 protected:
     bool _active = true;
+    bool _paused = false;
 
 public:
-    explicit Channel(const std::string& name, bool addCR = false) : _name(name), _linelen(0), _addCR(addCR) {}
-    explicit Channel(const char* name, bool addCR = false) : _name(name), _linelen(0), _addCR(addCR) {}
-    Channel(const char* name, int num, bool addCR = false) : _name(name) { _name += std::to_string(num), _linelen = 0, _addCR = addCR; }
+    explicit Channel(const std::string& name, bool addCR = false);
+    explicit Channel(const char* name, bool addCR = false);
+    Channel(const char* name, int num, bool addCR = false);
     virtual ~Channel() = default;
 
-    bool _ackwait = false;
+    int _ackwait = 0;  // 1 - waiting, 0 - ACKed, -1 - NAKed
 
     virtual void       handle() {};
     virtual Error      pollLine(char* line);
@@ -144,6 +145,8 @@ public:
         return timedReadBytes(reinterpret_cast<char*>(buffer), length, timeout);
     }
 
+    void writeUTF8(uint32_t code);
+
     bool setCr(bool on) {
         bool retval = _addCR;
         _addCR      = on;
@@ -188,10 +191,8 @@ public:
     virtual void out(const std::string& s, const char* tag);
     virtual void out_acked(const std::string& s, const char* tag);
 
-    void setAttr(int index, bool* valuep, const std::string& s, const char* tag);
-
     void ready();
-    void registerEvent(uint8_t code, EventPin* obj);
+    void registerEvent(uint8_t pinnum, InputPin* obj);
 
     size_t lineNumber() { return _line_number; }
 
@@ -199,4 +200,7 @@ public:
     virtual void   restore() {}
     virtual size_t position() { return 0; }
     virtual void   set_position(size_t pos) {}
+
+    void pause();
+    void resume();
 };

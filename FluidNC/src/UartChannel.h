@@ -50,9 +50,21 @@ public:
     size_t timedReadBytes(uint8_t* buffer, size_t length, TickType_t timeout) { return timedReadBytes((char*)buffer, length, timeout); };
     bool   realtimeOkay(char c) override;
     bool   lineComplete(char* line, char c) override;
+    int    uart_num() { return _uart_num; }
+#if ARDUINO_USB_CDC_ON_BOOT == 1
+    HWCDC* uart() { return _uart; }
+#else
+    Uart* uart() { return _uart; }
+#endif
+
+    bool setAttr(int index, bool* valuep, const std::string& s);
 
     void out(const std::string& s, const char* tag) override;
     void out_acked(const std::string& s, const char* tag) override;
+
+    void getExpanderId();
+
+    void registerEvent(uint8_t pinnum, InputPin* obj);
 
     // Configuration methods
     void group(Configuration::HandlerBase& handler) override {

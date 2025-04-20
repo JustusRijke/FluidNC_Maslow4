@@ -11,6 +11,22 @@
 #include <string_view>
 #include <algorithm>
 
+Channel::Channel(const std::string& name, bool addCR) : _name(name), _linelen(0), _addCR(addCR) {}
+Channel::Channel(const char* name, bool addCR) : _name(name), _linelen(0), _addCR(addCR) {}
+Channel::Channel(const char* name, int num, bool addCR) : _name(name) {
+    _name += std::to_string(num);
+    _linelen = 0;
+    _addCR   = addCR;
+}
+
+void Channel::pause() {
+    _paused = true;
+}
+
+void Channel::resume() {
+    _paused = false;
+}
+
 void Channel::flushRx() {
     _linelen   = 0;
     _lastWasCR = false;
@@ -135,20 +151,22 @@ void Channel::autoReport() {
 }
 
 void Channel::pin_event(uint32_t pinnum, bool active) {
-    try {
-        auto event_pin       = _events.at(pinnum);
-        *_pin_values[pinnum] = active;
-        event_pin->trigger(active);
-    } catch (std::exception& ex) {}
+    auto input_pin = _pins.at(pinnum);
+    protocol_send_event(active ? &pinActiveEvent : &pinInactiveEvent, input_pin);
 }
 
 void Channel::handleRealtimeCharacter(uint8_t ch) {
-    uint32_t cmd;
+    uint32_t cmd = 0;
 
+    if ((ch & 0xf8) == 0xf8) {
+        // 0xf8-0xff are not valid UTF-8 byte but can appear under some
+        // glitch conditions.
+        return;
+    }
     int res = _utf8.decode(ch, cmd);
     if (res == -1) {
         // This can be caused by line noise on an unpowered pendant
-        log_debug("UTF8 decoding error");
+        log_debug("UTF8 decoding error " << to_hex(ch) << " " << to_hex(cmd));
         _active = false;
         return;
     }
@@ -159,17 +177,19 @@ void Channel::handleRealtimeCharacter(uint8_t ch) {
 
     _active = true;
     if (cmd == PinACK) {
-        // log_debug("ACK");
-        _ackwait = false;
+        _ackwait = 0;
         return;
     }
     if (cmd == PinNAK) {
-        log_error("Channel device rejected config");
-        // log_debug("NAK");
-        _ackwait = false;
+        log_verbose("NAK");
+        _ackwait = -1;
         return;
     }
-
+    if (cmd == PinRST) {
+        _ackwait = -1;
+        send_alarm(ExecAlarm::ExpanderReset);
+        return;
+    }
     if (cmd >= PinLowFirst && cmd < PinLowLast) {
         pin_event(cmd - PinLowFirst, false);
         return;
@@ -190,6 +210,9 @@ void Channel::push(uint8_t byte) {
 }
 
 Error Channel::pollLine(char* line) {
+    if (_paused) {
+        return Error::Ok;
+    }
     handle();
     while (1) {
         int ch = -1;
@@ -223,13 +246,6 @@ Error Channel::pollLine(char* line) {
     return Error::NoData;
 }
 
-void Channel::setAttr(int index, bool* value, const std::string& attrString, const char* tag) {
-    if (value) {
-        _pin_values[index] = value;
-    }
-    out_acked(attrString, tag);
-}
-
 void Channel::out(const char* s, const char* tag) {
     sendLine(MsgLevelNone, s);
 }
@@ -242,18 +258,10 @@ void Channel::out_acked(const std::string& s, const char* tag) {
     out(s, tag);
 }
 
-void Channel::ready() {
-#if 0
-    // At the moment this is unnecessary because initializing
-    // an input pin triggers an initial value event
-    if (!_pin_values.empty()) {
-        out("GET: io.*");
-    }
-#endif
-}
+void Channel::ready() {}
 
-void Channel::registerEvent(uint8_t code, EventPin* obj) {
-    _events[code] = obj;
+void Channel::registerEvent(uint8_t pinnum, InputPin* obj) {
+    _pins[pinnum] = obj;
 }
 
 void Channel::ack(Error status) {
@@ -275,7 +283,8 @@ void Channel::ack(Error status) {
 
 void Channel::print_msg(MsgLevel level, const char* msg) {
     if (_message_level >= level) {
-        println(msg);
+        write(msg);
+        write("\n");
     }
 }
 
@@ -361,4 +370,11 @@ bool Channel::is_visible(const std::string& stem, std::string extension, bool is
         extensions.remove_prefix(next_pos + 1);
     }
     return false;
+}
+
+void Channel::writeUTF8(uint32_t code) {
+    auto v = _utf8.encode(code);
+    for (auto const& b : v) {
+        write(b);
+    }
 }

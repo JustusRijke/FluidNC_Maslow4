@@ -68,6 +68,7 @@ enum class ExecAlarm : uint8_t {
     HardStop              = 13,
     Unhomed               = 14,
     Init                  = 15,
+    ExpanderReset         = 16,
 };
 
 extern volatile ExecAlarm lastAlarm;
@@ -90,6 +91,8 @@ extern const ArgEvent spindleOverrideEvent;
 extern const ArgEvent accessoryOverrideEvent;
 extern const ArgEvent limitEvent;
 extern const ArgEvent faultPinEvent;
+extern const ArgEvent pinActiveEvent;
+extern const ArgEvent pinInactiveEvent;
 
 extern const ArgEvent reportStatusEvent;
 
@@ -107,6 +110,7 @@ extern const NoArgEvent restartEvent;
 extern const NoArgEvent fullResetEvent;
 
 extern const NoArgEvent runStartupLinesEvent;
+extern const NoArgEvent homingButtonEvent;
 
 // extern const NoArgEvent statusReportEvent;
 

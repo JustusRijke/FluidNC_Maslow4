@@ -190,18 +190,13 @@ static Error report_gcode(const char* value, AuthenticationLevel auth_level, Cha
 }
 
 static void show_settings(Channel& out, type_t type) {
+    switchInchMM(NULL, AuthenticationLevel::LEVEL_ADMIN, out);  // Print Report/Inches
+
     for (Setting* s : Setting::List) {
         if (s->getType() == type && s->getGrblName()) {
-            // The following test could be expressed more succinctly with XOR,
-            // but is arguably clearer when written out
             show_setting(s->getGrblName(), s->getCompatibleValue(), NULL, out);
         }
     }
-   // Print Report/Inches
-    switchInchMM(NULL, AuthenticationLevel::LEVEL_ADMIN, out);
-
-    // need this per issue #1036
-    fakeMaxSpindleSpeed(NULL, AuthenticationLevel::LEVEL_ADMIN, out);
 }
 
 static Error report_normal_settings(const char* value, AuthenticationLevel auth_level, Channel& out) {
@@ -209,6 +204,8 @@ static Error report_normal_settings(const char* value, AuthenticationLevel auth_
     return Error::Ok;
 }
 static Error list_grbl_names(const char* value, AuthenticationLevel auth_level, Channel& out) {
+    log_stream(out, "$13 => $Report/Inches");
+
     for (Setting* setting : Setting::List) {
         const char* gn = setting->getGrblName();
         if (gn) {
@@ -727,23 +724,9 @@ static Error switchInchMM(const char* value, AuthenticationLevel auth_level, Cha
     if (!value) {
         log_stream(out, "$13=" << (config->_reportInches ? "1" : "0"));
     } else {
-        config->_reportInches = ((value[0]=='1') ? true : false);
+        config->_reportInches = ((value[0] == '1') ? true : false);
     }
 
-    return Error::Ok;
-}
-
-static Error fakeMaxSpindleSpeed(const char* value, AuthenticationLevel auth_level, Channel& out) {
-    if (!value) {
-        log_stream(out, "$30=" << spindle->maxSpeed());
-    }
-    return Error::Ok;
-}
-
-static Error fakeLaserMode(const char* value, AuthenticationLevel auth_level, Channel& out) {
-    if (!value) {
-        log_stream(out, "$32=" << (spindle->isRateAdjusted() ? "1" : "0"));
-    }
     return Error::Ok;
 }
 
@@ -759,6 +742,115 @@ static Error showStartupLog(const char* value, AuthenticationLevel auth_level, C
 
 static Error showGPIOs(const char* value, AuthenticationLevel auth_level, Channel& out) {
     gpio_dump(out);
+    return Error::Ok;
+}
+
+#include "UartTypes.h"
+
+static Error uartPassthrough(const char* value, AuthenticationLevel auth_level, Channel& out) {
+    int         timeout = 2000;
+    std::string uart_name("auto");
+    int         uart_num;
+
+    if (value) {
+        std::string_view rest(value);
+        std::string_view first;
+        while (string_util::split_prefix(rest, first, ',')) {
+            if (string_util::equal_ignore_case(first, "auto")) {
+                uart_name = "auto";
+            } else if (!first.empty() && string_util::tolower(first.back()) == 's') {
+                first.remove_suffix(1);
+                if (!string_util::is_int(first, timeout)) {
+                    log_error_to(out, "Invalid timeout number");
+                    return Error::InvalidValue;
+                }
+                timeout *= 1000;
+            } else {
+                uart_name = first;
+            }
+        }
+    }
+    Uart* downstream_uart = nullptr;
+    if (uart_name == "auto") {
+        // Find a UART device with a non-empty passthrough_baud config item
+        for (uart_num = 1; uart_num < MAX_N_UARTS; ++uart_num) {
+            downstream_uart = config->_uarts[uart_num];
+            if (downstream_uart) {
+                if (downstream_uart->_passthrough_baud != 0) {
+                    break;
+                }
+            }
+        }
+        if (uart_num == MAX_N_UARTS) {
+            log_error_to(out, "No uart has passthrough_baud configured");
+            return Error::InvalidValue;
+        }
+    } else {
+        // Find a UART device that matches the name
+        for (uart_num = 1; uart_num < MAX_N_UARTS; ++uart_num) {
+            downstream_uart = config->_uarts[uart_num];
+            if (downstream_uart) {
+                if (downstream_uart->name() == uart_name) {
+                    if (downstream_uart->_passthrough_baud == 0) {
+                        log_error_to(out, uart_name << " does not have passthrough_baud configured");
+                        return Error::InvalidValue;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        if (uart_num == MAX_N_UARTS) {
+            log_error_to(out, uart_name << " does not exist");
+            return Error::InvalidValue;
+        }
+    }
+
+    out.pause();  // Stop input polling on the upstream channel
+
+    UartChannel* channel = nullptr;
+    for (size_t n = 0; (channel = config->_uart_channels[n]) != nullptr; ++n) {
+        if (channel->uart_num() == uart_num) {
+            break;
+        }
+        channel = nullptr;  // Leave channel null if not found
+    }
+
+    bool flow;
+    int  xon_threshold;
+    int  xoff_threshold;
+
+    if (channel) {
+        channel->pause();
+    }
+    downstream_uart->enterPassthrough();
+
+    const int buflen = 256;
+    uint8_t   buffer[buflen];
+    size_t    upstream_len;
+    size_t    downstream_len;
+
+    TickType_t last_ticks = xTaskGetTickCount();
+
+    while (xTaskGetTickCount() - last_ticks < timeout) {
+        size_t len;
+        len = out.timedReadBytes((char*)buffer, buflen, 10);
+        if (len > 0) {
+            last_ticks = xTaskGetTickCount();
+            downstream_uart->write(buffer, len);
+        }
+        len = downstream_uart->timedReadBytes((char*)buffer, buflen, 10);
+        if (len > 0) {
+            last_ticks = xTaskGetTickCount();
+            out.write(buffer, len);
+        }
+    }
+
+    downstream_uart->exitPassthrough();
+    if (channel) {
+        channel->resume();
+    }
+    out.resume();
     return Error::Ok;
 }
 
@@ -862,12 +954,11 @@ void make_user_commands() {
     new UserCommand("SA", "Alarm/Send", sendAlarm, anyState);
     new UserCommand("Heap", "Heap/Show", showHeap, anyState);
     new UserCommand("SS", "Startup/Show", showStartupLog, anyState);
+    new UserCommand("UP", "Uart/Passthrough", uartPassthrough, notIdleOrAlarm);
 
     new UserCommand("RI", "Report/Interval", setReportInterval, anyState);
 
     new UserCommand("13", "Report/Inches", switchInchMM, notIdleOrAlarm);
-    new UserCommand("30", "FakeMaxSpindleSpeed", fakeMaxSpindleSpeed, notIdleOrAlarm);
-    new UserCommand("32", "FakeLaserMode", fakeLaserMode, notIdleOrAlarm);
 
     new UserCommand("GS", "GRBL/Show", report_init_message_cmd, notIdleOrAlarm);
 

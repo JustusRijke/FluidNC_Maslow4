@@ -6,7 +6,6 @@
 #include "PinCapabilities.h"
 #include "PinAttributes.h"
 #include "PinOptionsParser.h"
-#include "src/Machine/EventPin.h"
 
 #include <cstdint>
 #include <cstring>
@@ -14,6 +13,8 @@
 #include <vector>
 
 typedef uint8_t pinnum_t;
+
+class InputPin;
 
 namespace Pins {
 
@@ -35,13 +36,15 @@ namespace Pins {
         // I/O:
         virtual void          write(int high) = 0;
         virtual void          synchronousWrite(int high);
-        virtual int           read()                       = 0;
-        virtual void          setAttr(PinAttributes value) = 0;
-        virtual PinAttributes getAttr() const              = 0;
+        virtual void          setDuty(uint32_t duty) {};
+        virtual uint32_t      maxDuty() { return 0; }
+        virtual int           read()                                                = 0;
+        virtual void          setAttr(PinAttributes value, uint32_t frequencey = 0) = 0;
+        virtual PinAttributes getAttr() const                                       = 0;
 
         virtual bool canStep() { return false; }
 
-        virtual void registerEvent(EventPin* obj);
+        virtual void registerEvent(InputPin* obj);
 
         virtual std::string toString() = 0;
 
