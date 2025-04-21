@@ -169,6 +169,10 @@ namespace Machine {
             log_info("I2C Switch: using defaults");
             _i2c_switch = new I2CSwitch();
         }
+        if (_maslow == nullptr) {
+            log_info("Maslow: using defaults");
+            _maslow = new Maslow();
+        }
     }
 
     const char defaultConfig[] = "name: Default (Test Drive)\nboard: None\n";

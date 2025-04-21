@@ -4,30 +4,25 @@
 
 #pragma once
 
+#include "../Configuration/Configurable.h"
 #include "hal/Encoder.h"
 #include "utils/CycleStats.hpp"
 #include "utils/StateMachine.hpp"
 
 #include <array>
 
-class Maslow {
+class Maslow : public Configuration::Configurable {
 public:
-    enum class State : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
+    Maslow();
 
-    static Maslow& instance();  // Get the singleton instance
+    enum class State : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
 
     void init();   // Called once to perform initialization logic
     void cycle();  // Called periodically to perform state machine logic
 
-    // Delete copy constructor and assignment operator
-    Maslow(const Maslow&)            = delete;
-    Maslow& operator=(const Maslow&) = delete;
-
     void request_state_change(State new_state);
 
 private:
-    Maslow();  // Private constructor (singleton restriction)
-
     StateMachine<State> _sm;
     CycleStats          _cycle_stats { 500 };  // Report every 0.5 seconds
     inline void         log_state_change(const char* msg);
@@ -36,4 +31,9 @@ private:
     std::array<Encoder, NUM_ENCODERS> _encoders    = { Encoder(0), Encoder(1), Encoder(2), Encoder(3) };
     std::string                       encoderPositions;
     uint64_t                          position = 0;
+
+    // Configuration handlers.
+    void group(Configuration::HandlerBase& handler) override;
+
+    ~Maslow() = default;
 };

@@ -15,13 +15,7 @@ namespace {
     constexpr uint32_t REPORT_DELAY = 5000;  // [ms] Time between reporting stuff to the console
 }
 
-// Returns the single instance of Maslow.
-Maslow& Maslow::instance() {
-    static Maslow instance;  // Guaranteed to be created once (C++11+ thread-safe)
-    return instance;
-}
-
-// Private constructor to enforce singleton.
+// Constructor for the Maslow class. Initializes the state machine.
 Maslow::Maslow() : _sm(MS_PER_CYCLE) {
     _sm.state = State::Entrypoint;
 }
@@ -110,4 +104,8 @@ void Maslow::request_state_change(State new_state) {
     // Add conditional logic here if needed, for example
     // check if the new state is valid or if the current state allows the transition.
     _sm.state = new_state;
+}
+
+void Maslow::group(Configuration::HandlerBase& handler) {
+    //TODO
 }

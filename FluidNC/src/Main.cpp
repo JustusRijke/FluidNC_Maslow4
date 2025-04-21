@@ -49,7 +49,7 @@ void maslow_task_function(void* pvParameters) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
         // Call the Maslow cycle function
-        Maslow::instance().cycle();
+        config->_maslow->cycle();
     }
 }
 
@@ -163,10 +163,7 @@ void setup() {
 
         // Maslow specific initialization
         config->_i2c_switch->init();
-
-        make_proxies();
-
-        Maslow::instance().init();
+        config->_maslow->init();
 
         // Create the Maslow task
         BaseType_t xReturned = xTaskCreatePinnedToCore(
@@ -181,6 +178,8 @@ void setup() {
         if (xReturned != pdPASS) {
             log_error("Failed to create Maslow Task");
         }
+
+        make_proxies();
 
     } catch (const AssertionFailed& ex) {
         // This means something is terribly broken:

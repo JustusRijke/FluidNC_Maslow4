@@ -29,6 +29,7 @@
 #include "Macros.h"
 
 // Maslow specific
+#include "src/Maslow/Maslow.h"
 #include "src/Maslow/hal/I2CSwitch.h"
 
 #include <string_view>
@@ -83,6 +84,7 @@ namespace Machine {
         Uart*        _uarts[MAX_N_UARTS]         = { nullptr };
 
         // Maslow configuration
+        Maslow*    _maslow     = nullptr;
         I2CSwitch* _i2c_switch = nullptr;
 
         float _arcTolerance      = 0.002f;

@@ -903,7 +903,7 @@ static Error showHeap(const char* value, AuthenticationLevel auth_level, Channel
 // Maslow user commands
 static Error maslowTest(const char* value, AuthenticationLevel auth_level, Channel& out) {
     log_info("Test called!");
-    Maslow::instance().request_state_change(Maslow::State::Test);
+    config->_maslow->request_state_change(Maslow::State::Test);
     return Error::Ok;
 }
 
