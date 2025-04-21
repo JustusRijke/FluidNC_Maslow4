@@ -5,7 +5,6 @@
 #include "Maslow.h"
 
 #include "../Logging.h"
-#include "hal/I2CSwitch.h"
 
 // TODO: Remove after debugging
 extern TaskHandle_t maslowTaskHandle;
@@ -29,11 +28,6 @@ Maslow::Maslow() : _sm(MS_PER_CYCLE) {
 
 // Maslow initialization logic.
 void Maslow::init() {
-    if (!I2CSwitch::instance().init()) {
-        log_error("I2C bus initialization failed");
-        return;
-    }
-
     for (size_t i = 0; i < _encoders.size(); ++i) {
         if (!_encoders[i].is_connected()) {
             log_error("Encoder initialization failed");

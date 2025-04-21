@@ -28,6 +28,9 @@
 #include "UserInputs.h"
 #include "Macros.h"
 
+// Maslow specific
+#include "src/Maslow/hal/I2CSwitch.h"
+
 #include <string_view>
 
 namespace Machine {
@@ -78,6 +81,9 @@ namespace Machine {
 
         UartChannel* _uart_channels[MAX_N_UARTS] = { nullptr };
         Uart*        _uarts[MAX_N_UARTS]         = { nullptr };
+
+        // Maslow configuration
+        I2CSwitch* _i2c_switch = nullptr;
 
         float _arcTolerance      = 0.002f;
         float _junctionDeviation = 0.01f;

@@ -1,11 +1,11 @@
 #include "Encoder.h"
 
-#include "I2CSwitch.h"
+#include "../../Machine/MachineConfig.h"
 
 Encoder::Encoder(uint8_t port) : _port(port) {};
 
 inline void Encoder::select_i2c_port() const {
-    I2CSwitch::instance().select_port(_port);
+    config->_i2c_switch->select_port(_port);
 }
 
 bool Encoder::is_connected() {

@@ -85,6 +85,9 @@ namespace Machine {
         handler.item("enable_parking_override_control", _enableParkingOverrideControl);
         handler.item("use_line_numbers", _useLineNumbers);
         handler.item("planner_blocks", _planner_blocks, 10, 120);
+
+        // Maslow specific
+        handler.section("i2c_switch", _i2c_switch);
     }
 
     void MachineConfig::afterParse() {
@@ -159,6 +162,12 @@ namespace Machine {
 
         if (_macros == nullptr) {
             _macros = new Macros();
+        }
+
+        // Maslow specific
+        if (_i2c_switch == nullptr) {
+            log_info("I2C Switch: using defaults");
+            _i2c_switch = new I2CSwitch();
         }
     }
 

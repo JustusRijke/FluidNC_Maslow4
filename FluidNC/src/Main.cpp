@@ -161,6 +161,9 @@ void setup() {
             config->_probe->init();
         }
 
+        // Maslow specific initialization
+        config->_i2c_switch->init();
+
         make_proxies();
 
         Maslow::instance().init();

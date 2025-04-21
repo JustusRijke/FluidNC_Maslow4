@@ -13,30 +13,33 @@ Its function is to
 
 // Private namespace for local constants (prefered over #define)
 namespace {
-    constexpr int      MCU_PIN_SDA   = 5;       // I2C SDA pin
-    constexpr int      MCU_PIN_SCL   = 4;       // I2C SCL pin
     constexpr uint32_t I2C_FREQUENCY = 400000;  // I2C bus frequency
     constexpr uint8_t  TCAADDR       = 0x70;    // I2C address of TCA9546A switch
 }
 
-// Returns the single instance of I2CSwitch.
-I2CSwitch& I2CSwitch::instance() {
-    static I2CSwitch instance;  // Guaranteed to be created once (C++11+ thread-safe)
-    return instance;
-}
+bool I2CSwitch::init() {
+    if (!_sda.defined() || !_scl.defined()) {
+        log_error("I2C Switch: pins not defined");
+        return false;
+    }
 
-// Private constructor to enforce singleton.
-I2CSwitch::I2CSwitch() {}
+    log_info("I2C Switch: using pins " << _scl.index() << " (SCL) and " << _sda.index() << " (SDA)");
+
+    // FluidNC has no ESP32S3 I2C support, fall back to the Arduino Wire library.
+    if (Wire.begin(_sda.index(), _scl.index(), I2C_FREQUENCY)) {
+        _i2c_mux.begin(TCAADDR, Wire);  // TODO: returns false even though the device is connected. Investigate.
+        return true;
+    }
+
+    return false;
+}
 
 void I2CSwitch::select_port(uint8_t port) {
     _i2c_mux.setPort(port);
 }
 
-bool I2CSwitch::init() {
-    // FluidNC has no ESP32S3 I2C support, fall back to the Arduino Wire library.
-    if (Wire.begin(MCU_PIN_SDA, MCU_PIN_SCL, I2C_FREQUENCY)) {
-        _i2c_mux.begin(TCAADDR, Wire);  // TODO: returns false even though the device is connected. Investigate.
-        return true;
-    }
-    return false;
+void I2CSwitch::group(Configuration::HandlerBase& handler) {
+    handler.item("scl_pin", _scl);
+    handler.item("sda_pin", _sda);
+    // handler.item("delay_ms", _delay_ms, 0, 10000);
 }

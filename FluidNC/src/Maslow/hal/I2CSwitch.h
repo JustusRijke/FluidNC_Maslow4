@@ -9,23 +9,26 @@ Its function is to
 
 #pragma once
 
+#include "../../Configuration/Configurable.h"
 #include "../drivers/SparkFun_I2C_Mux_Arduino_Library.h"
 
 #include <cstdint>
 
-class I2CSwitch {
+class I2CSwitch : public Configuration::Configurable {
 public:
-    static I2CSwitch& instance();  // Get the singleton instance
+    Pin _sda;
+    Pin _scl;
 
-    void select_port(uint8_t port);
+    I2CSwitch() = default;
+
     bool init();
-
-    // Delete copy constructor and assignment operator
-    I2CSwitch(const I2CSwitch&)            = delete;
-    I2CSwitch& operator=(const I2CSwitch&) = delete;
+    void select_port(uint8_t port);
 
 private:
-    I2CSwitch();  // Private constructor (singleton restriction)
-
     QWIICMUX _i2c_mux;  // TCA9546A I2C switch hardware driver
+
+    // Configuration handlers.
+    void group(Configuration::HandlerBase& handler) override;
+
+    ~I2CSwitch() = default;
 };
