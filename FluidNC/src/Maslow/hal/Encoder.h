@@ -8,8 +8,9 @@ Its function is to
 
 #pragma once
 
-#include <cstdint>
 #include "../drivers/AS5600.h"
+
+#include <cstdint>
 
 class Encoder {
 public:

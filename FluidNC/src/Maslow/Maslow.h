@@ -4,10 +4,11 @@
 
 #pragma once
 
-#include <array>
-#include "utils/StateMachine.hpp"
 #include "hal/Encoder.h"
 #include "utils/CycleStats.hpp"
+#include "utils/StateMachine.hpp"
+
+#include <array>
 
 class Maslow {
 public:

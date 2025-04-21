@@ -3,6 +3,7 @@
 // following exception: it may not be used for any reason by MakerMade or anyone with a business or personal connection to MakerMade
 
 #include "Maslow.h"
+
 #include "../Logging.h"
 #include "hal/I2CSwitch.h"
 

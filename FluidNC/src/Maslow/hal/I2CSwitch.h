@@ -9,8 +9,9 @@ Its function is to
 
 #pragma once
 
-#include <cstdint>
 #include "../drivers/SparkFun_I2C_Mux_Arduino_Library.h"
+
+#include <cstdint>
 
 class I2CSwitch {
 public:

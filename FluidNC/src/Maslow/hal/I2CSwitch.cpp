@@ -8,6 +8,7 @@ Its function is to
 */
 
 #include "I2CSwitch.h"
+
 #include <Arduino.h>
 
 // Private namespace for local constants (prefered over #define)

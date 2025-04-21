@@ -1,4 +1,5 @@
 #include "Encoder.h"
+
 #include "I2CSwitch.h"
 
 Encoder::Encoder(uint8_t port) : _port(port) {};

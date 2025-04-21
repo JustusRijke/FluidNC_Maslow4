@@ -4,8 +4,9 @@
 
 #pragma once
 
-#include <Arduino.h>  // Include Arduino for micros()
 #include "../../Logging.h"
+
+#include <Arduino.h>  // Include Arduino for micros()
 
 /**
  * @brief A class for tracking and reporting cycle statistics.
