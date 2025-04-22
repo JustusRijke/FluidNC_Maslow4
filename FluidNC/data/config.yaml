@@ -62,7 +62,8 @@ axes:
         step_pin: gpio.46
         homing_amps: 1.000
 
-# I2C switch for the belt encoders
-i2c_switch:
-  scl_pin: gpio.4
-  sda_pin: gpio.5
+maslow:
+  # I2C switch for the belt encoders
+  i2c_switch:
+    scl_pin: gpio.4
+    sda_pin: gpio.5

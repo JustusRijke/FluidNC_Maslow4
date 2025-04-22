@@ -21,11 +21,19 @@ Maslow::Maslow() : _sm(MS_PER_CYCLE) {
 }
 
 // Maslow initialization logic.
-void Maslow::init() {
+_Bool Maslow::init() {
+    if (_i2c_switch == nullptr) {
+        log_error("Missing config: i2c_switch");
+        return false;
+    }
+
+    if (!_i2c_switch->init())
+        return false;
+
     for (size_t i = 0; i < _encoders.size(); ++i) {
         if (!_encoders[i].is_connected()) {
             log_error("Encoder initialization failed");
-            return;
+            return false;
         }
     }
 
@@ -33,6 +41,8 @@ void Maslow::init() {
     // if (!encoder.detectMagnet()) {
     //     log_warn("Magnet not detected");
     // }
+
+    return true;
 }
 
 // The main Maslow state machine loop, called cyclically.
@@ -107,5 +117,5 @@ void Maslow::request_state_change(State new_state) {
 }
 
 void Maslow::group(Configuration::HandlerBase& handler) {
-    //TODO
+    handler.section("i2c_switch", _i2c_switch);
 }

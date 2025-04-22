@@ -86,8 +86,7 @@ namespace Machine {
         handler.item("use_line_numbers", _useLineNumbers);
         handler.item("planner_blocks", _planner_blocks, 10, 120);
 
-        // Maslow specific
-        handler.section("i2c_switch", _i2c_switch);
+        handler.section("maslow", _maslow);
     }
 
     void MachineConfig::afterParse() {
@@ -164,14 +163,8 @@ namespace Machine {
             _macros = new Macros();
         }
 
-        // Maslow specific
-        if (_i2c_switch == nullptr) {
-            log_info("I2C Switch: using defaults");
-            _i2c_switch = new I2CSwitch();
-        }
         if (_maslow == nullptr) {
-            log_info("Maslow: using defaults");
-            _maslow = new Maslow();
+            log_error("Maslow section not defined in configuration file");
         }
     }
 

@@ -161,22 +161,25 @@ void setup() {
             config->_probe->init();
         }
 
-        // Maslow specific initialization
-        config->_i2c_switch->init();
-        config->_maslow->init();
+        // Try to initialize the Maslow instance (if defined in the configuration file)
+        bool maslow_initialized = (config->_maslow != nullptr) && config->_maslow->init();
 
-        // Create the Maslow task
-        BaseType_t xReturned = xTaskCreatePinnedToCore(
-            maslow_task_function,
-            "MaslowTask",
-            4096,  // Stack size in words (TODO: adjust as needed).
-            NULL,  // Parameter passed into the task.
-            3,     // Priority at which the task is created. Assumption: more important than the protocol polling & output loops.
-            &maslowTaskHandle,  // TODO: Replace with NULL after debugging
-            SUPPORT_TASK_CORE);
+        if (maslow_initialized) {
+            // Create the Maslow task
+            BaseType_t xReturned = xTaskCreatePinnedToCore(
+                maslow_task_function,
+                "MaslowTask",
+                4096,  // Stack size in words (TODO: adjust as needed).
+                NULL,  // Parameter passed into the task.
+                3,     // Priority at which the task is created. Assumption: more important than the protocol polling & output loops.
+                &maslowTaskHandle,  // TODO: Replace with NULL after debugging
+                SUPPORT_TASK_CORE);
 
-        if (xReturned != pdPASS) {
-            log_error("Failed to create Maslow Task");
+            if (xReturned != pdPASS) {
+                log_error("Failed to create Maslow Task");
+            }
+        } else {
+            log_error("Maslow initialization failed");
         }
 
         make_proxies();

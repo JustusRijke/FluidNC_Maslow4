@@ -24,11 +24,11 @@ public:
     bool init();
     void select_port(uint8_t port);
 
-private:
-    QWIICMUX _i2c_mux;  // TCA9546A I2C switch hardware driver
-
     // Configuration handlers.
     void group(Configuration::HandlerBase& handler) override;
 
     ~I2CSwitch() = default;
+
+private:
+    QWIICMUX _i2c_mux;  // TCA9546A I2C switch hardware driver
 };

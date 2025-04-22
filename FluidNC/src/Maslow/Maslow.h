@@ -6,6 +6,7 @@
 
 #include "../Configuration/Configurable.h"
 #include "hal/Encoder.h"
+#include "hal/I2CSwitch.h"
 #include "utils/CycleStats.hpp"
 #include "utils/StateMachine.hpp"
 
@@ -15,9 +16,12 @@ class Maslow : public Configuration::Configurable {
 public:
     Maslow();
 
+    // Components
+    I2CSwitch* _i2c_switch = nullptr;  // I2C switch for the encoders
+
     enum class State : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
 
-    void init();   // Called once to perform initialization logic
+    bool init();   // Called once to perform initialization logic
     void cycle();  // Called periodically to perform state machine logic
 
     void request_state_change(State new_state);
