@@ -9,14 +9,9 @@
 // TODO: Remove after debugging
 extern TaskHandle_t maslowTaskHandle;
 
-// Private namespace for local constants (prefered over #define)
-namespace {
-    constexpr uint32_t MS_PER_CYCLE = 5;     // [ms] Expected time between consecutive calls to cycle()
-    constexpr uint32_t REPORT_DELAY = 5000;  // [ms] Time between reporting stuff to the console
-}
-
 // Constructor for the Maslow class. Initializes the state machine.
-Maslow::Maslow() : _sm(MS_PER_CYCLE) {
+Maslow::Maslow() : _sm() {
+    _sm.ms_per_cycle = _cycletime;
     _sm.state = State::Entrypoint;
 }
 
@@ -67,7 +62,7 @@ void Maslow::cycle() {
 
         case State::Report:
             log_state_change("Entered state 'Report'");
-            if ((_sm.state_changed) || (_sm.time_in_state() > REPORT_DELAY)) {
+            if ((_sm.state_changed) || (_sm.time_in_state() > 5000)) {
                 _sm.reset_time_in_state();
 
                 log_info("Raw angle: " << position);
@@ -118,4 +113,5 @@ void Maslow::request_state_change(State new_state) {
 
 void Maslow::group(Configuration::HandlerBase& handler) {
     handler.section("i2c_switch", _i2c_switch);
+    handler.item("cycletime", _cycletime, 1, 100);
 }

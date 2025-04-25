@@ -16,9 +16,13 @@ class Maslow : public Configuration::Configurable {
 public:
     Maslow();
 
+    // Confguration
+    uint8_t _cycletime = 5;  // [ms] Maslow task cycle time
+
     // Components
     I2CSwitch* _i2c_switch = nullptr;  // I2C switch for the encoders
 
+    // States
     enum class State : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
 
     bool init();   // Called once to perform initialization logic
@@ -36,7 +40,7 @@ private:
     std::string                       encoderPositions;
     uint64_t                          position = 0;
 
-    // Configuration handlers.
+    // Configuration handler
     void group(Configuration::HandlerBase& handler) override;
 
     ~Maslow() = default;

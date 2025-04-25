@@ -16,19 +16,22 @@ Its function is to
 
 class I2CSwitch : public Configuration::Configurable {
 public:
+    I2CSwitch() = default;
+
+    // Configuration
     Pin _sda;
     Pin _scl;
-
-    I2CSwitch() = default;
+    uint8_t  _address   = 0x70;    // I2C address of TCA9546A switch
+    uint32_t _frequency = 400000;  // I2C bus frequency
 
     bool init();
     void select_port(uint8_t port);
-
-    // Configuration handlers.
-    void group(Configuration::HandlerBase& handler) override;
 
     ~I2CSwitch() = default;
 
 private:
     QWIICMUX _i2c_mux;  // TCA9546A I2C switch hardware driver
+
+    // Configuration handlers
+    void group(Configuration::HandlerBase& handler) override;
 };

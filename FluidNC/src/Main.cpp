@@ -36,13 +36,13 @@ TaskHandle_t maslowTaskHandle = NULL;
 
 // Task function for Maslow
 void maslow_task_function(void* pvParameters) {
-    const TickType_t xFrequency = pdMS_TO_TICKS(MASLOW_CYCLE_TIME);  // 5 milliseconds
+    const TickType_t xFrequency = pdMS_TO_TICKS(config->_maslow->_cycletime);
     TickType_t       xLastWakeTime;
 
     // Initialise the xLastWakeTime variable with the current time.
     xLastWakeTime = xTaskGetTickCount();
 
-    log_info("Maslow task started with fixed cycle time of " << MASLOW_CYCLE_TIME << "ms");
+    log_info("Maslow task started with fixed cycle time of " << config->_maslow->_cycletime << "ms");
 
     for (;;) {  // Infinite loop for the task
         // Wait for the next cycle.

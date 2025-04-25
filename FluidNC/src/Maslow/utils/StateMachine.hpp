@@ -17,7 +17,7 @@
  *
  *         switch (_statemachine.state) {
  *             case State::Delay:
- *                 if (_statemachine.time_in_state() >= 1000) {  // 1 second
+ *                 if (_statemachine.time_in_state() >= 1000) {  // 1 second, if ms_per_cycle = 1
  *                      _statemachine.state = State::DoSomething;
  *                 }
  *                 break;
@@ -37,7 +37,7 @@
  *     }
  *
  * private:
- *     StateMachine<State> _statemachine{100}; // 100ms per cycle
+ *     StateMachine<State> _statemachine;
  * };
  * @endcode
  */
@@ -56,8 +56,9 @@ public:
     StateT state;
     bool   state_changed;
 
-    explicit StateMachine(uint32_t ms_per_cycle) :
-        state(static_cast<StateT>(0)), state_changed(false), _cycles(0), _ms_per_cycle(ms_per_cycle), _state_prev(static_cast<StateT>(0)) {}
+    StateMachine() : state(static_cast<StateT>(0)), state_changed(false), _cycles(0), _state_prev(static_cast<StateT>(0)) {}
+
+    uint16_t ms_per_cycle = 1;  // [ms] Time per cycle, defaults to 1ms. Adjust to match update() call frequency.
 
     // Update the state machine
     void update() {
@@ -74,7 +75,7 @@ public:
     // Return the time in the current state in milliseconds
     uint32_t time_in_state() const {
         // Prevent overflow
-        uint64_t result = static_cast<uint64_t>(_cycles) * _ms_per_cycle;
+        uint64_t result = static_cast<uint64_t>(_cycles) * ms_per_cycle;
         return result > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(result);
     }
 
@@ -83,6 +84,5 @@ public:
 
 private:
     uint32_t _cycles;
-    uint32_t _ms_per_cycle;
     StateT   _state_prev;
 };

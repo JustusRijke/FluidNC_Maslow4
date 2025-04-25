@@ -9,13 +9,9 @@ Its function is to
 
 #include "I2CSwitch.h"
 
-#include <Arduino.h>
+#include "../../NutsBolts.h"
 
-// Private namespace for local constants (prefered over #define)
-namespace {
-    constexpr uint32_t I2C_FREQUENCY = 400000;  // I2C bus frequency
-    constexpr uint8_t  TCAADDR       = 0x70;    // I2C address of TCA9546A switch
-}
+#include <Arduino.h>
 
 bool I2CSwitch::init() {
     if (!_sda.defined() || !_scl.defined()) {
@@ -23,11 +19,12 @@ bool I2CSwitch::init() {
         return false;
     }
 
-    log_info("I2C Switch: using pins " << _scl.index() << " (SCL) and " << _sda.index() << " (SDA)");
+    log_info("I2C Switch: using pins " << _scl.index() << " (SCL) and " << _sda.index() << " (SDA), " << _frequency << " Hz, address "
+                                       << to_hex(_address));
 
     // FluidNC has no ESP32S3 I2C support, fall back to the Arduino Wire library.
-    if (Wire.begin(_sda.index(), _scl.index(), I2C_FREQUENCY)) {
-        _i2c_mux.begin(TCAADDR, Wire);  // TODO: returns false even though the device is connected. Investigate.
+    if (Wire.begin(_sda.index(), _scl.index(), _frequency)) {
+        _i2c_mux.begin(_address, Wire);  // TODO: returns false even though the device is connected. Investigate.
         return true;
     }
 
@@ -41,5 +38,6 @@ void I2CSwitch::select_port(uint8_t port) {
 void I2CSwitch::group(Configuration::HandlerBase& handler) {
     handler.item("scl_pin", _scl);
     handler.item("sda_pin", _sda);
-    // handler.item("delay_ms", _delay_ms, 0, 10000);
+    handler.item("frequency", _frequency, 100000, 1000000);
+    handler.item("address", _address);
 }
