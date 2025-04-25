@@ -9,6 +9,7 @@ Its function is to
 #pragma once
 
 #include "../drivers/AS5600.h"
+#include "I2CSwitch.h"
 
 #include <cstdint>
 
@@ -17,9 +18,10 @@ public:
     explicit Encoder(uint8_t port);
     bool     is_connected();
     uint16_t get_position();
+    I2CSwitch* _i2c_switch = nullptr;  // TODO: inject dependency
 
 private:
-    uint8_t _port;
+    uint8_t _port;  // TODO: make configurable
     AS5600  _rotation_meter;
 
     void select_i2c_port() const;

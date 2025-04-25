@@ -11,7 +11,7 @@ extern TaskHandle_t maslowTaskHandle;
 
 // Constructor for the Maslow class. Initializes the state machine.
 Maslow::Maslow() : _sm() {
-    _sm.ms_per_cycle = _cycletime;
+    _sm.ms_per_cycle = _cycle_time;
     _sm.state = State::Entrypoint;
 }
 
@@ -26,6 +26,7 @@ _Bool Maslow::init() {
         return false;
 
     for (size_t i = 0; i < _encoders.size(); ++i) {
+        _encoders[i]._i2c_switch = _i2c_switch;
         if (!_encoders[i].is_connected()) {
             log_error("Encoder initialization failed");
             return false;
@@ -43,7 +44,7 @@ _Bool Maslow::init() {
 // The main Maslow state machine loop, called cyclically.
 void Maslow::cycle() {
     // Cycle time measurement
-    //_cycle_stats.track_cycles();
+    _cycle_stats.track_cycles();
 
     // For debugging: combine all positions so changes are easy to see in the terminal
     position = 0;
@@ -113,5 +114,5 @@ void Maslow::request_state_change(State new_state) {
 
 void Maslow::group(Configuration::HandlerBase& handler) {
     handler.section("i2c_switch", _i2c_switch);
-    handler.item("cycletime", _cycletime, 1, 100);
+    handler.item("cycle_time", _cycle_time, 1, 100);
 }

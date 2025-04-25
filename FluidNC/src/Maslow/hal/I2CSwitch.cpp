@@ -3,7 +3,7 @@ Wrapper for the SparkFun I2C Mux library used for the TCA9546A I2C switch,
 which is used to access the I2C port for each of the 4 belt position encoders.
 
 Its function is to 
-- provide a single point of access to the I2C switch by using a singleton pattern
+- provide access to the I2C switch
 - abstract away the hardware implementation details
 */
 

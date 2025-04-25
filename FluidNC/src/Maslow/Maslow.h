@@ -17,7 +17,7 @@ public:
     Maslow();
 
     // Confguration
-    uint8_t _cycletime = 5;  // [ms] Maslow task cycle time
+    uint8_t _cycle_time = 5;  // [ms] Maslow task cycle time
 
     // Components
     I2CSwitch* _i2c_switch = nullptr;  // I2C switch for the encoders
@@ -32,7 +32,7 @@ public:
 
 private:
     StateMachine<State> _sm;
-    CycleStats          _cycle_stats { 500 };  // Report every 0.5 seconds
+    CycleStats          _cycle_stats { 10000 };  // Report every 10 seconds
     inline void         log_state_change(const char* msg);
 
     static constexpr int              NUM_ENCODERS = 4;
@@ -42,6 +42,4 @@ private:
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;
-
-    ~Maslow() = default;
 };
