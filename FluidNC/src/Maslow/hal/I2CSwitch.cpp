@@ -24,10 +24,11 @@ bool I2CSwitch::init() {
 
     // FluidNC has no ESP32S3 I2C support, fall back to the Arduino Wire library.
     if (Wire.begin(_sda.index(), _scl.index(), _frequency)) {
-        _i2c_mux.begin(_address, Wire);  // TODO: returns false even though the device is connected. Investigate.
+        _i2c_mux.begin(_address, Wire);
         return true;
     }
 
+    log_error("I2C Switch: failed to initialize");
     return false;
 }
 

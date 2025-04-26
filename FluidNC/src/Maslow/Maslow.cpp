@@ -12,11 +12,11 @@ extern TaskHandle_t maslowTaskHandle;
 // Constructor for the Maslow class. Initializes the state machine.
 Maslow::Maslow() : _sm() {
     _sm.ms_per_cycle = _cycle_time;
-    _sm.state = State::Entrypoint;
+    _sm.state        = eState::Entrypoint;
 }
 
 // Maslow initialization logic.
-_Bool Maslow::init() {
+bool Maslow::init() {
     if (_i2c_switch == nullptr) {
         log_error("Missing config: i2c_switch");
         return false;
@@ -25,18 +25,16 @@ _Bool Maslow::init() {
     if (!_i2c_switch->init())
         return false;
 
-    for (size_t i = 0; i < _encoders.size(); ++i) {
-        _encoders[i]._i2c_switch = _i2c_switch;
-        if (!_encoders[i].is_connected()) {
-            log_error("Encoder initialization failed");
+    for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
+        if (_belts[i] == nullptr) {
+            log_error("Missing config: belt " << BELT_NAMES[i]);
+            return false;
+        }
+        if (!_belts[i]->init(BELT_NAMES[i], _i2c_switch)) {
+            log_error("Failed to initialize belt " << BELT_NAMES[i]);
             return false;
         }
     }
-
-    // //Check for the presence of the magnet
-    // if (!encoder.detectMagnet()) {
-    //     log_warn("Magnet not detected");
-    // }
 
     return true;
 }
@@ -46,27 +44,21 @@ void Maslow::cycle() {
     // Cycle time measurement
     _cycle_stats.track_cycles();
 
-    // For debugging: combine all positions so changes are easy to see in the terminal
-    position = 0;
-    for (size_t i = 0; i < _encoders.size(); ++i) {
-        position += _encoders[i].get_position();
-    }
-
     // Update the state machine, so we can check state changes and time spent in state.
     _sm.update();
 
     switch (_sm.state) {
-        case State::Entrypoint:
+        case eState::Entrypoint:
             // Entry point logic: do nothing but move to an initial state.
-            _sm.state = State::Report;
+            _sm.state = eState::Report;
             break;
 
-        case State::Report:
+        case eState::Report:
             log_state_change("Entered state 'Report'");
             if ((_sm.state_changed) || (_sm.time_in_state() > 5000)) {
                 _sm.reset_time_in_state();
 
-                log_info("Raw angle: " << position);
+                // log_info("Raw angle: " << position);
 
                 // Log Maslow task stack size for debugging
                 UBaseType_t stackHWM_Words = uxTaskGetStackHighWaterMark(maslowTaskHandle);
@@ -74,26 +66,26 @@ void Maslow::cycle() {
             }
             break;
 
-        case State::Test:
+        case eState::Test:
             log_state_change("Entered state 'Test'");
             if (_sm.time_in_state() > 3000) {
                 log_info("Test state timeout, moving to Report state");
-                _sm.state = State::Report;
+                _sm.state = eState::Report;
             }
             break;
 
-        case State::FatalError:
+        case eState::FatalError:
             // TODO - Add code to handle fatal error, e.g. stop motors, turn off power, etc.
             break;
 
-        case State::Undefined:
+        case eState::Undefined:
             // Oops, we should never end up here. Fatal programming error.
             log_error("Entered undefined state");
-            _sm.state = State::FatalError;
+            _sm.state = eState::FatalError;
             break;
 
         default:
-            _sm.state = State::Undefined;
+            _sm.state = eState::Undefined;
             break;
     }
 }
@@ -106,13 +98,18 @@ inline void Maslow::log_state_change(const char* msg) {
 }
 
 // External function to request a state change.
-void Maslow::request_state_change(State new_state) {
+void Maslow::request_state_change(eState new_state) {
     // Add conditional logic here if needed, for example
     // check if the new state is valid or if the current state allows the transition.
     _sm.state = new_state;
 }
 
 void Maslow::group(Configuration::HandlerBase& handler) {
-    handler.section("i2c_switch", _i2c_switch);
     handler.item("cycle_time", _cycle_time, 1, 100);
+
+    handler.section("i2c_switch", _i2c_switch);
+
+    for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
+        handler.section(BELT_NAMES[i], _belts[i]);
+    }
 }

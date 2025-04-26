@@ -2,23 +2,34 @@
 
 #include "../../Machine/MachineConfig.h"
 
-Encoder::Encoder(uint8_t port) : _port(port) {};
+bool Encoder::init(I2CSwitch* i2c_switch) {
+    _i2c_switch = i2c_switch;
 
-inline void Encoder::select_i2c_port() const {
-    _i2c_switch->select_port(_port);
-}
-
-bool Encoder::is_connected() {
     if (_i2c_switch == nullptr) {
-        log_error("Encoder: I2C switch not defined");
+        log_error("I2C switch not defined");
         return false;
     }
-    select_i2c_port();
-    return (_rotation_meter.begin());
+
+    _i2c_switch->select_port(_port);
+    if (!_rotation_meter.begin()) {
+        log_error("Encoder not found at port " << _port);
+        return false;
+    }
+
+    if (!_rotation_meter.detectMagnet()) {
+        log_error("Magnet not detected");
+    }
+
+    log_info("Encoder at port " << _port << " initialized. Current angle: " << _rotation_meter.rawAngle());
+
+    return true;
 }
 
 uint16_t Encoder::get_position() {
-    select_i2c_port();
-    //_rotation_meter.begin();
+    _i2c_switch->select_port(_port);
     return (_rotation_meter.rawAngle());
+}
+
+void Encoder::group(Configuration::HandlerBase& handler) {
+    handler.item("port", _port, 0, 3);
 }

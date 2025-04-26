@@ -76,3 +76,20 @@ maslow:
     sda_pin: gpio.5
     address: 0x70
     frequency: 400000
+
+  # Belts
+  tl:
+    encoder:
+      port: 0
+
+  tr:
+    encoder:
+      port: 1
+
+  bl:
+    encoder:
+      port: 2
+
+  br:
+    encoder:
+      port: 3
