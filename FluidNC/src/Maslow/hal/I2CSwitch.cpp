@@ -14,16 +14,16 @@ Its function is to
 #include <Arduino.h>
 
 bool I2CSwitch::init() {
-    if (!_sda.defined() || !_scl.defined()) {
+    if (!_sda_pin.defined() || !_scl_pin.defined()) {
         log_error("I2C Switch: pins not defined");
         return false;
     }
 
-    log_info("I2C Switch: using pins " << _scl.index() << " (SCL) and " << _sda.index() << " (SDA), " << _frequency << " Hz, address "
-                                       << to_hex(_address));
+    log_info("I2C Switch: using " << _scl_pin.name() << " (SCL) and " << _sda_pin.name() << " (SDA), " << _frequency << " Hz, address "
+                                  << to_hex(_address));
 
     // FluidNC has no ESP32S3 I2C support, fall back to the Arduino Wire library.
-    if (Wire.begin(_sda.index(), _scl.index(), _frequency)) {
+    if (Wire.begin(_sda_pin.index(), _scl_pin.index(), _frequency)) {
         _i2c_mux.begin(_address, Wire);
         return true;
     }
@@ -37,8 +37,8 @@ void I2CSwitch::select_port(uint8_t port) {
 }
 
 void I2CSwitch::group(Configuration::HandlerBase& handler) {
-    handler.item("scl_pin", _scl);
-    handler.item("sda_pin", _sda);
+    handler.item("scl_pin", _scl_pin);
+    handler.item("sda_pin", _sda_pin);
     handler.item("frequency", _frequency, 100000, 1000000);
     handler.item("address", _address);
 }

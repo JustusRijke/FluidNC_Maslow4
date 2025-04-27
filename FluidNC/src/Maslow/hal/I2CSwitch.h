@@ -19,8 +19,8 @@ public:
     I2CSwitch() = default;
 
     // Configuration
-    Pin _sda;
-    Pin _scl;
+    Pin      _sda_pin;
+    Pin      _scl_pin;
     uint8_t  _address   = 0x70;    // I2C address of TCA9546A switch
     uint32_t _frequency = 400000;  // I2C bus frequency
 
