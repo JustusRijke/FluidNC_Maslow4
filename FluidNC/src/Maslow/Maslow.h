@@ -26,7 +26,7 @@ public:
     static constexpr int  NUMBER_OF_BELTS                = 4;
     static constexpr char BELT_NAMES[NUMBER_OF_BELTS][3] = { "TL", "TR", "BL", "BR" };
     enum class eBelt { TopLeft, TopRight, BottomLeft, BottomRight };
-    std::array<Belt*, NUMBER_OF_BELTS> _belts;
+    Belt* _belts[NUMBER_OF_BELTS] = { nullptr, nullptr, nullptr, nullptr };
 
     // States
     enum class eState : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
