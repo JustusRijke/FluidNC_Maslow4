@@ -16,8 +16,16 @@ bool Belt::init(const char* name, I2CSwitch* i2c_switch) {
         return false;
     }
 
+    if (_motor == nullptr) {
+        log_error("Missing config: motor " << name);
+        return false;
+    }
+
     // Initialize the encoder with the I2C switch (dependency injection)
     if (!_encoder->init(i2c_switch))
+        return false;
+
+    if (!_motor->init())
         return false;
 
     log_info("Belt " << name << " initialized");
@@ -29,4 +37,5 @@ void Belt::cycle() {}
 
 void Belt::group(Configuration::HandlerBase& handler) {
     handler.section("encoder", _encoder);
+    handler.section("motor", _motor);
 }

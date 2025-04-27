@@ -6,6 +6,7 @@
 
 #include "../Configuration/Configurable.h"
 #include "hal/Encoder.h"
+#include "hal/HBridgeMotor.h"
 
 class Belt : public Configuration::Configurable {
 public:
@@ -13,6 +14,7 @@ public:
 
     // Components
     Encoder* _encoder = nullptr;
+    HBridgeMotor* _motor   = nullptr;
 
     bool init(const char* name, I2CSwitch* i2c_switch);
     void cycle();

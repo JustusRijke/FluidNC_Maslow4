@@ -56,7 +56,6 @@ static uint8_t calc_pwm_precision(uint32_t frequency) {
     if (frequency == 0) {
         frequency = 1;  // Limited elsewhere but just to be safe...
     }
-
     // Increase the precision (bits) until it exceeds the frequency
     // The hardware maximum precision is 20 bits
     const uint8_t  ledcMaxBits = 20;
@@ -72,7 +71,8 @@ static uint8_t calc_pwm_precision(uint32_t frequency) {
 }
 
 PwmPin::PwmPin(int gpio, bool invert, uint32_t frequency) : _gpio(gpio), _frequency(frequency) {
-    uint8_t bits       = calc_pwm_precision(frequency);
+    // uint8_t bits       = calc_pwm_precision(frequency); // TODO: Not working well for ESP32-S3, use ledc_find_suitable_duty_resolution (available in ESP-IDF >=5.0)
+    uint8_t bits       = 10;  // Hardcoded for now, 10 bits matches 16kHz PWM for Maslow motors
     _period            = (1 << bits) - 1;
     _channel           = allocateChannel();
     uint8_t      group = (_channel / 8);
