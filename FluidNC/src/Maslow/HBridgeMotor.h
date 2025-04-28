@@ -7,7 +7,7 @@ TODO: Split into driver and hal classes
 */
 #pragma once
 
-#include "../../Configuration/Configurable.h"
+#include "../Configuration/Configurable.h"
 
 class HBridgeMotor : public Configuration::Configurable {
 public:

@@ -1,6 +1,6 @@
 #include "Encoder.h"
 
-#include "../../Machine/MachineConfig.h"
+#include "../Machine/MachineConfig.h"
 
 bool Encoder::init(I2CSwitch* i2c_switch) {
     _i2c_switch = i2c_switch;

@@ -6,8 +6,8 @@
 
 #include "../Configuration/Configurable.h"
 #include "Belt.h"
-#include "hal/Encoder.h"
-#include "hal/I2CSwitch.h"
+#include "Encoder.h"
+#include "I2CSwitch.h"
 #include "utils/CycleStats.hpp"
 #include "utils/StateMachine.hpp"
 

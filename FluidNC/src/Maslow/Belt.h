@@ -5,8 +5,8 @@
 #pragma once
 
 #include "../Configuration/Configurable.h"
-#include "hal/Encoder.h"
-#include "hal/HBridgeMotor.h"
+#include "Encoder.h"
+#include "HBridgeMotor.h"
 
 class Belt : public Configuration::Configurable {
 public:

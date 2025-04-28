@@ -1,15 +1,15 @@
 /*
-Wrapper for the Arduino library for AS5600 magnetic rotation meters used for the belt position encoders.
+Wrapper for the AS5600 magnetic rotation meters used for the belt position encoders.
 
 Its function is to 
-- abstract away the hardware implementation details
-- provide only the necessary functionality for the Maslow class to interact with the encoders
+- provide access to the encoders via the I2C switch
+- build a bridge between the hardware and the FluidNC machine configuration architecture
 */
 
 #pragma once
 
-#include "../../Configuration/Configurable.h"
-#include "../drivers/AS5600.h"
+#include "../Configuration/Configurable.h"
+#include "AS5600.h"
 #include "I2CSwitch.h"
 
 #include <cstdint>

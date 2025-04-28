@@ -1,17 +1,14 @@
 /*
-Wrapper for the SparkFun I2C Mux library used for the TCA9546A I2C switch, 
-which is used to access the I2C port for each of the 4 belt position encoders.
+Wrapper for the TCA9546A I2C switch, which is used to access the I2C port for each of the 4 belt position encoders.
 
 Its function is to 
 - provide access to the I2C switch
-- abstract away the hardware implementation details
+- build a bridge between the hardware and the FluidNC machine configuration architecture
 */
-
 #pragma once
 
-#include "../../Configuration/Configurable.h"
-#include "../drivers/SparkFun_I2C_Mux_Arduino_Library.h"
-
+#include "../Configuration/Configurable.h"
+#include "TCA9548.h"
 #include <cstdint>
 
 class I2CSwitch : public Configuration::Configurable {
@@ -27,10 +24,8 @@ public:
     bool init();
     void select_port(uint8_t port);
 
-    ~I2CSwitch() = default;
-
 private:
-    QWIICMUX _i2c_mux;  // TCA9546A I2C switch hardware driver
+    TCA9548* _i2c_mux = nullptr;  // TCA9546A I2C switch hardware driver
 
     // Configuration handlers
     void group(Configuration::HandlerBase& handler) override;

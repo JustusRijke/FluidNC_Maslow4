@@ -1,15 +1,6 @@
-/*
-Wrapper for the SparkFun I2C Mux library used for the TCA9546A I2C switch, 
-which is used to access the I2C port for each of the 4 belt position encoders.
-
-Its function is to 
-- provide access to the I2C switch
-- abstract away the hardware implementation details
-*/
-
 #include "I2CSwitch.h"
 
-#include "../../NutsBolts.h"
+#include "../NutsBolts.h"
 
 #include <Arduino.h>
 
@@ -24,8 +15,8 @@ bool I2CSwitch::init() {
 
     // FluidNC has no ESP32S3 I2C support, fall back to the Arduino Wire library.
     if (Wire.begin(_sda_pin.index(), _scl_pin.index(), _frequency)) {
-        _i2c_mux.begin(_address, Wire);
-        return true;
+        _i2c_mux = new TCA9548(_address, &Wire);
+        return _i2c_mux->isConnected();
     }
 
     log_error("I2C Switch: failed to initialize");
@@ -33,7 +24,7 @@ bool I2CSwitch::init() {
 }
 
 void I2CSwitch::select_port(uint8_t port) {
-    _i2c_mux.setPort(port);
+    _i2c_mux->selectChannel(port);
 }
 
 void I2CSwitch::group(Configuration::HandlerBase& handler) {
