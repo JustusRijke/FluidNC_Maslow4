@@ -19,7 +19,19 @@ public:
     bool init(const char* name, I2CSwitch* i2c_switch);
     void cycle();
 
-private:
+    void retract() {
+        _motor->reverse(4000);
+    }
+
+    void extent() {
+        _motor->forward(4000);
+    }
+
+    void stop() {
+        _motor->stop();
+    }
+
+    private:
     // StateMachine<State> _sm;
     const char* _name = nullptr;  // Identifier for the belt, e.g. "TL", "TR", etc.
 

@@ -15,13 +15,19 @@ public:
 
     bool init();
 
+    void stop() { stop(false); }
+    void stop(bool brake);
+    void forward(uint32_t duty);
+    void reverse(uint32_t duty);
 
 private:
     // Configuration
     Pin         _current_sense_pin;
     Pin         _fwd_pin;
     Pin         _rev_pin;
-    uint32_t    _frequency = 16000;
+    uint32_t    _frequency = 4000;
+
+    uint32_t _max_duty;
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

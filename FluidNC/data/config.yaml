@@ -85,7 +85,7 @@ maslow:
       fwd_pin: gpio.45
       rev_pin: gpio.21
       current_sense_pin: gpio.18
-      frequency: 16000
+      frequency: 4000
 
   tr:
     encoder:
@@ -94,7 +94,7 @@ maslow:
       fwd_pin: gpio.42
       rev_pin: gpio.41
       current_sense_pin: gpio.6
-      frequency: 16000
+      frequency: 4000
 
   bl:
     encoder:
@@ -103,7 +103,7 @@ maslow:
       fwd_pin: gpio.37
       rev_pin: gpio.36
       current_sense_pin: gpio.8
-      frequency: 16000
+      frequency: 4000
 
   br:
     encoder:
@@ -112,4 +112,4 @@ maslow:
       fwd_pin: gpio.9
       rev_pin: gpio.3
       current_sense_pin: gpio.7
-      frequency: 16000
+      frequency: 4000

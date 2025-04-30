@@ -1,4 +1,4 @@
-// Copyright 2022 - Mitch Bradley
+// Copyright 2022 - Mitch Bradley, Stefan de Bruijn
 // Use of this source code is governed by a GPLv3 license that can be found in the LICENSE file.
 
 /*
@@ -17,8 +17,10 @@
 //Need to be fixed in ESP-IDF
 #ifdef SOC_LEDC_SUPPORT_XTAL_CLOCK
 #    define LEDC_DEFAULT_CLK LEDC_USE_XTAL_CLK
+#    define CLOCK_FREQUENCY 40000000
 #else
-#    define LEDC_DEFAULT_CLK LEDC_AUTO_CLK
+#    define LEDC_DEFAULT_CLK LEDC_USE_APB_CLK
+#    define CLOCK_FREQUENCY 80000000
 #endif
 
 #if CONFIG_IDF_TARGET_ESP32  // ESP32/PICO-D4
@@ -42,9 +44,11 @@ static int allocateChannel() {
     // that is already on the same frequency.  There is some
     // code for that in PinUsers/PwmPin.cpp TryGrabChannel()
 
+    // Maslow needs all 8 channels. 
+    // They all run at the same frequency so increment by 1 instead of 2.
     Assert(nextLedcChannel < 8, "Out of LEDC PwmPin channels");
-    nextLedcChannel += 2;
-    return nextLedcChannel - 2;
+    nextLedcChannel += 1;
+    return nextLedcChannel - 1;
 }
 
 // Calculate the highest PwmPin precision in bits for the desired frequency
@@ -56,14 +60,13 @@ static uint8_t calc_pwm_precision(uint32_t frequency) {
     if (frequency == 0) {
         frequency = 1;  // Limited elsewhere but just to be safe...
     }
-    // Increase the precision (bits) until it exceeds the frequency
-    // The hardware maximum precision is 20 bits
-    const uint8_t  ledcMaxBits = 20;
-    const uint32_t apbFreq     = 80000000;
-    const uint32_t maxCount    = apbFreq / frequency;
-    for (uint8_t bits = 2; bits <= ledcMaxBits; ++bits) {
+
+    // Increase the precision (bits) until it exceeds the frequency:
+    const uint8_t  ledcMaxBits = LEDC_TIMER_BIT_MAX - 1;
+    const uint32_t maxCount    = uint32_t(CLOCK_FREQUENCY) / frequency;
+    for (uint32_t bits = 2; bits <= ledcMaxBits; ++bits) {
         if ((1u << bits) > maxCount) {
-            return bits - 1;
+            return uint8_t(bits - 1);
         }
     }
 
@@ -71,14 +74,20 @@ static uint8_t calc_pwm_precision(uint32_t frequency) {
 }
 
 PwmPin::PwmPin(int gpio, bool invert, uint32_t frequency) : _gpio(gpio), _frequency(frequency) {
-    // uint8_t bits       = calc_pwm_precision(frequency); // TODO: Not working well for ESP32-S3, use ledc_find_suitable_duty_resolution (available in ESP-IDF >=5.0)
-    uint8_t bits       = 10;  // Hardcoded for now, 10 bits matches 16kHz PWM for Maslow motors
+    uint8_t bits       = calc_pwm_precision(frequency); 
     _period            = (1 << bits) - 1;
     _channel           = allocateChannel();
     uint8_t      group = (_channel / 8);
     ledc_timer_t timer = ledc_timer_t((_channel / 2) % 4);
 
-    ledc_timer_config_t ledc_timer = { .speed_mode      = ledc_mode_t(group),
+#ifdef SOC_LEDC_SUPPORT_HS_MODE
+    // Only ESP32 has LEDC_HIGH_SPEED_MODE with 8 channels per group
+    ledc_mode_t speedmode = ledc_mode_t(int(_channel / (LEDC_CHANNEL_MAX / LEDC_SPEED_MODE_MAX)));
+#else
+    ledc_mode_t speedmode = LEDC_LOW_SPEED_MODE;
+#endif
+
+    ledc_timer_config_t ledc_timer = { .speed_mode      = speedmode,
                                        .duty_resolution = ledc_timer_bit_t(bits),
                                        .timer_num       = timer,
                                        .freq_hz         = frequency,
@@ -90,7 +99,7 @@ PwmPin::PwmPin(int gpio, bool invert, uint32_t frequency) : _gpio(gpio), _freque
     }
 
     ledc_channel_config_t ledc_channel = { .gpio_num   = _gpio,
-                                           .speed_mode = ledc_mode_t(group),
+                                           .speed_mode = speedmode,
                                            .channel    = ledc_channel_t(_channel),
                                            .intr_type  = LEDC_INTR_DISABLE,
                                            .timer_sel  = timer,
@@ -98,16 +107,13 @@ PwmPin::PwmPin(int gpio, bool invert, uint32_t frequency) : _gpio(gpio), _freque
                                            .hpoint     = 0,
                                            .flags      = { .output_invert = invert } };
     if (ledc_channel_config(&ledc_channel) != ESP_OK) {
-        log_error("ledc channel setup failed");
-        throw -1;
+        log_error("ledc channel setup failed. Frequency: " << frequency << " hz; duty resolution: " << bits
+                                                           << "; channel: " << int(_channel));
     }
 }
 
 // cppcheck-suppress unusedFunction
 void IRAM_ATTR PwmPin::setDuty(uint32_t duty) {
-    uint8_t g = _channel >> 3, c = _channel & 7;
-    bool    on = duty != 0;
-
     // This is like ledcWrite, but it is called from an ISR
     // and ledcWrite uses RTOS features not compatible with ISRs
     // Also, ledcWrite infers enable from duty, which is incorrect
@@ -115,9 +121,36 @@ void IRAM_ATTR PwmPin::setDuty(uint32_t duty) {
 
     // We might be able to use ledc_duty_config() which is IRAM_ATTR
 
-    LEDC.channel_group[g].channel[c].duty.duty        = duty << 4;
-    LEDC.channel_group[g].channel[c].conf0.sig_out_en = on;
-    LEDC.channel_group[g].channel[c].conf1.duty_start = on;
+    uint8_t c  = _channel & 7;
+    bool    on = duty != 0;
+
+#ifdef SOC_LEDC_SUPPORT_HS_MODE
+    // Only ESP32 has LEDC_HIGH_SPEED_MODE with 8 channels per group
+    ledc_mode_t speedmode = ledc_mode_t(int(_channel / (LEDC_CHANNEL_MAX / LEDC_SPEED_MODE_MAX)));
+#else
+    ledc_mode_t speedmode = LEDC_LOW_SPEED_MODE;
+#endif
+
+    // ledc_set_duty(speedmode, ledc_channel_t(c), duty);
+    // This does:
+
+    auto& ch = LEDC.channel_group[speedmode].channel[c];
+
+    // These can be ignored because they should have been set by initial set_duty / update_duty (ctor):
+    // ch.conf1.duty_inc   = 1;
+    // ch.conf1.duty_num   = 1;
+    // ch.conf1.duty_cycle = 1;
+    // ch.conf1.duty_scale = 0;
+    ch.duty.duty = duty << 4;
+
+    // -> ledc_hal_set_sig_out_en(&(p_ledc_obj[speed_mode]->ledc_hal), channel, true);
+    ch.conf0.sig_out_en = on;
+    // -> ledc_hal_set_duty_start(&(p_ledc_obj[speed_mode]->ledc_hal), channel, true);
+    ch.conf1.duty_start = on;
+    // -> ledc_ls_channel_update(speed_mode, channel); // Doesn't seem to hurt for high speed channels.
+    ch.conf0.low_speed_update = 1;
+
+    // log_debug("Setting duty to " << duty);
 }
 
 PwmPin::~PwmPin() {

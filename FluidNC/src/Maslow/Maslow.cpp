@@ -68,7 +68,16 @@ void Maslow::cycle() {
 
         case eState::Test:
             log_state_change("Entered state 'Test'");
-            if (_sm.time_in_state() > 3000) {
+
+            if (_sm.state_changed){
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->retract();}
+
+            if ((_sm.time_in_state() > 500)  && (_sm.time_in_state() < 510)){
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->extent();
+            }
+
+            if (_sm.time_in_state() > 900) {
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->stop();
                 log_info("Test state timeout, moving to Report state");
                 _sm.state = eState::Report;
             }
