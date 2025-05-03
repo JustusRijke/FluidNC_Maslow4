@@ -29,7 +29,21 @@ public:
     Belt* _belts[NUMBER_OF_BELTS] = { nullptr, nullptr, nullptr, nullptr };
 
     // States
-    enum class eState : uint16_t { Undefined, Entrypoint, Report, Test, FatalError };
+    enum class eState : uint16_t { 
+        Undefined, 
+        Entrypoint,
+        Report, 
+        Test, 
+        FatalError,
+        _ENUM_SIZE
+    };
+    const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = {
+        "Undefined",
+        "Entrypoint",
+        "Report",
+        "Test",
+        "FatalError"
+    };
 
     bool init();   // Called once to perform initialization logic
     void cycle();  // Called periodically to perform state machine logic

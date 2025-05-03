@@ -8,8 +8,13 @@
  * @code
  * #include "StateMachine.hpp"
  *
- * enum class State : uint16_t { Undefined, Delay, DoSomething };
- *
+ * enum class State : uint16_t { Undefined, Delay, DoSomething, _ENUM_SIZE };
+ * const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> state_names = {
+ *     "Undefined state",
+ *     "", // Empty string means a state change to State::Delay will not be logged
+ *     "Doing something"
+ * };
+ * 
  * class FooBar {
  * public:
  *     void cycle() {
@@ -23,9 +28,9 @@
  *                 break;
  *             case State::DoSomething:
  *                 if (_statemachine.state_changed) {
- *                    log("Entered DoSomething state");
+ *                    // Do something once
  *                 }
- *                 // Do something
+ *                 // Do something every cycle
  *                 break;
  *             case State::Undefined:
  *                 // Fatal error, should never reach here
@@ -37,7 +42,7 @@
  *     }
  *
  * private:
- *     StateMachine<State> _statemachine;
+ *     StateMachine<State> _statemachine(state_names);
  * };
  * @endcode
  */
@@ -52,11 +57,20 @@ class StateMachine {
     static_assert(std::is_enum_v<StateT>, "StateT must be an enum!");
     static_assert(std::is_same_v<std::underlying_type_t<StateT>, uint16_t>, "StateT must have uint16_t as its underlying type!");
 
+private:
+    static constexpr size_t _number_of_states = static_cast<size_t>(StateT::_ENUM_SIZE);
+
 public:
     StateT state;
     bool   state_changed;
 
-    StateMachine() : state(static_cast<StateT>(0)), state_changed(false), _cycles(0), _state_prev(static_cast<StateT>(0)) {}
+    StateMachine(const std::array<std::string, _number_of_states>& state_names)
+        : state(static_cast<StateT>(0)), state_changed(false), _cycles(0), _state_prev(static_cast<StateT>(0)), _state_names(state_names)
+    {
+        if (_state_names.size() < _number_of_states) {
+            throw std::runtime_error("State names array does not have enough elements");
+        }
+    }
 
     uint16_t ms_per_cycle = 1;  // [ms] Time per cycle, defaults to 1ms. Adjust to match update() call frequency.
 
@@ -64,6 +78,12 @@ public:
     void update() {
         state_changed = (state != _state_prev);
         if (state_changed) {
+
+            // Log state change if a state name is provided
+            if (!_state_names[static_cast<size_t>(state)].empty()) {
+                log_info("State changed from " + _state_names[static_cast<size_t>(_state_prev)] + " to " + _state_names[static_cast<size_t>(state)]);
+            }
+            
             _cycles     = 0;
             _state_prev = state;
         } else {
@@ -85,4 +105,5 @@ public:
 private:
     uint32_t _cycles;
     StateT   _state_prev;
+    std::array<std::string, _number_of_states> _state_names;
 };

@@ -10,7 +10,7 @@
 extern TaskHandle_t maslowTaskHandle;
 
 // Constructor for the Maslow class. Initializes the state machine.
-Maslow::Maslow() : _sm() {
+Maslow::Maslow() : _sm(_state_names) {
     _sm.ms_per_cycle = _cycle_time;
     _sm.state        = eState::Entrypoint;
 }
@@ -54,7 +54,6 @@ void Maslow::cycle() {
             break;
 
         case eState::Report:
-            log_state_change("Entered state 'Report'");
             if ((_sm.state_changed) || (_sm.time_in_state() > 5000)) {
                 _sm.reset_time_in_state();
 
@@ -67,8 +66,6 @@ void Maslow::cycle() {
             break;
 
         case eState::Test:
-            log_state_change("Entered state 'Test'");
-
             if (_sm.state_changed){
                 _belts[static_cast<size_t>(eBelt::TopLeft)]->retract();}
 
@@ -96,13 +93,6 @@ void Maslow::cycle() {
         default:
             _sm.state = eState::Undefined;
             break;
-    }
-}
-
-// Helper function to log state changes. Only logs once per state change.
-inline void Maslow::log_state_change(const char* msg) {
-    if (_sm.state_changed) {
-        log_info(std::string("Maslow: ") + msg);
     }
 }
 
