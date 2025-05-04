@@ -11,10 +11,11 @@ Its function is to
 #include "../Configuration/Configurable.h"
 #include "AS5600.h"
 #include "I2CSwitch.h"
+#include "utils/HierarchicalLog.hpp"
 
 #include <cstdint>
 
-class Encoder : public Configuration::Configurable {
+class Encoder : public Configuration::Configurable, public HierarchicalLog {
 public:
     Encoder() = default;
 

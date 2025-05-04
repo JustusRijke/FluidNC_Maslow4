@@ -2,7 +2,7 @@
 
 bool HBridgeMotor::init() {
     if (!_fwd_pin.defined() || !_rev_pin.defined()|| !_current_sense_pin.defined()) {
-        log_error("H-Bridge Motor: missing pin configurations");
+        p_log_config_error("Missing pin configurations");
         return false;
     }
 
@@ -10,7 +10,7 @@ bool HBridgeMotor::init() {
         _fwd_pin.setAttr(Pin::Attr::PWM, _frequency);
     } else
     {
-        log_error("H-Bridge Motor: " << _fwd_pin.name() << " cannot be used as PWM output");
+        p_log_config_error(_fwd_pin.name() << " cannot be used as PWM output");
         return false;
     }
 
@@ -18,14 +18,13 @@ bool HBridgeMotor::init() {
         _rev_pin.setAttr(Pin::Attr::PWM, _frequency);
     } else   
     {    
-        log_error("H-Bridge Motor: " << _rev_pin.name() << " cannot be used as PWM output");
+        p_log_config_error(_rev_pin.name() << " cannot be used as PWM output");
         return false;
     }
 
     _max_duty = _fwd_pin.maxDuty();
 
-    log_info("H-Bridge Motor: using " << _fwd_pin.name() << " (FWD/IN1), " << _rev_pin.name() << " (REV/IN2), " << _current_sense_pin.name() << " (IPROPI), PWM=" << _frequency << " Hz, max.duty " << _max_duty);
-
+    p_log_info("Initialized (" << _fwd_pin.name() << " (FWD/IN1), " << _rev_pin.name() << " (REV/IN2), " << _current_sense_pin.name() << " (IPROPI), PWM=" << _frequency << " Hz, max.duty " << _max_duty << ").");
     return true;
 }
 

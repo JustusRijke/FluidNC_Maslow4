@@ -3,6 +3,7 @@
 // following exception: it may not be used for any reason by MakerMade or anyone with a business or personal connection to MakerMade
 
 #include "Maslow.h"
+#include "../System.h"
 
 #include "../Logging.h"
 
@@ -10,32 +11,36 @@
 extern TaskHandle_t maslowTaskHandle;
 
 // Constructor for the Maslow class. Initializes the state machine.
-Maslow::Maslow() : _sm(_state_names) {
+Maslow::Maslow() : _sm(_state_names, [this](const std::string& msg) { _log_state_change(msg); }){
     _sm.ms_per_cycle = _cycle_time;
     _sm.state        = eState::Entrypoint;
 }
 
 // Maslow initialization logic.
 bool Maslow::init() {
+    initName("Maslow", nullptr); // For hierarchical naming when logging
+
     if (_i2c_switch == nullptr) {
-        log_error("Missing config: i2c_switch");
+        p_log_config_error("Missing config: i2c_switch");
         return false;
     }
 
+    _i2c_switch->initName("I2C Switch", this);
     if (!_i2c_switch->init())
         return false;
 
     for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
         if (_belts[i] == nullptr) {
-            log_error("Missing config: belt " << BELT_NAMES[i]);
+            p_log_config_error("Missing config: belt " << BELT_NAMES[i]);
             return false;
         }
-        if (!_belts[i]->init(BELT_NAMES[i], _i2c_switch)) {
-            log_error("Failed to initialize belt " << BELT_NAMES[i]);
+        _belts[i]->initName(BELT_NAMES[i], this);
+        if (!_belts[i]->init(_i2c_switch)) {
             return false;
         }
     }
 
+    p_log_info("Initialized.");
     return true;
 }
 
@@ -57,11 +62,11 @@ void Maslow::cycle() {
             if ((_sm.state_changed) || (_sm.time_in_state() > 5000)) {
                 _sm.reset_time_in_state();
 
-                // log_info("Raw angle: " << position);
+                // p_log_info("Raw angle: " << position);
 
                 // Log Maslow task stack size for debugging
                 UBaseType_t stackHWM_Words = uxTaskGetStackHighWaterMark(maslowTaskHandle);
-                log_info("Maslow task stack High Water Mark (HWM): " << stackHWM_Words << " bytes free");
+                p_log_info("Maslow task stack High Water Mark (HWM): " << stackHWM_Words << " bytes free");
             }
             break;
 
@@ -75,7 +80,7 @@ void Maslow::cycle() {
 
             if (_sm.time_in_state() > 900) {
                 _belts[static_cast<size_t>(eBelt::TopLeft)]->stop();
-                log_info("Test state timeout, moving to Report state");
+                p_log_info("Test state timeout, moving to Report state");
                 _sm.state = eState::Report;
             }
             break;
@@ -86,7 +91,7 @@ void Maslow::cycle() {
 
         case eState::Undefined:
             // Oops, we should never end up here. Fatal programming error.
-            log_error("Entered undefined state");
+            p_log_error("Entered undefined state");
             _sm.state = eState::FatalError;
             break;
 
@@ -94,6 +99,11 @@ void Maslow::cycle() {
             _sm.state = eState::Undefined;
             break;
     }
+}
+
+// Log state changes (called by StateMachine)
+void Maslow::_log_state_change(const std::string& state_name) {
+    p_log_info("State changed to " << state_name)
 }
 
 // External function to request a state change.

@@ -2,54 +2,59 @@
  * Copyright (c) 2025 -	Justus Rijke
  * Use of this source code is governed by a GPLv3 license that can be found in the LICENSE file.
  *
- * A simple state machine for uint16_t-based enums.
+ * A simple state machine for uint16_t-based enums, with callback to a custom logging function to log state changes.
+ * 
  * Example Usage:
  * 
- * @code
  * #include "StateMachine.hpp"
- *
+ * 
+ * // Example logging function
+ * void my_logger(const std::string& state_name) {
+ *   log_info("State machine changed state to: " << state_name);
+ * }
+ * 
+ * // This is a simple example of a state machine with three states: Delay, DoSomething, and Undefined.
  * enum class State : uint16_t { Undefined, Delay, DoSomething, _ENUM_SIZE };
- * const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> state_names = {
- *     "Undefined state",
+ * const std::array<std::string, static_cast<size_t>(State::_ENUM_SIZE)> state_names = {
+ *   "Undefined state",
  *     "", // Empty string means a state change to State::Delay will not be logged
  *     "Doing something"
  * };
+ * StateMachine<State> _statemachine(state_names, my_logger);
  * 
- * class FooBar {
- * public:
- *     void cycle() {
- *         _statemachine.update();
- *
- *         switch (_statemachine.state) {
- *             case State::Delay:
- *                 if (_statemachine.time_in_state() >= 1000) {  // 1 second, if ms_per_cycle = 1
- *                      _statemachine.state = State::DoSomething;
- *                 }
- *                 break;
- *             case State::DoSomething:
- *                 if (_statemachine.state_changed) {
- *                    // Do something once
- *                 }
- *                 // Do something every cycle
- *                 break;
- *             case State::Undefined:
- *                 // Fatal error, should never reach here
- *                 break;
- *             default:
- *                 _statemachine.state = State::Undefined;
- *                 break;
- *         }
+ * void cycle() {
+ *     _statemachine.update();
+ * 
+ *     switch (_statemachine.state) {
+ *         case State::Delay:
+ *             if (_statemachine.time_in_state() >= 1000) {  // 1 second, if ms_per_cycle = 1
+ *                 _statemachine.state = State::DoSomething;
+ *             }
+ *             break;
+ *         case State::DoSomething:
+ *             if (_statemachine.state_changed) {
+ *                 // Do something once
+ *             }
+ *             // Do something every cycle
+ *             break;
+ *         case State::Undefined:
+ *             // Fatal error, should never reach here
+ *             break;
+ *         default:
+ *             _statemachine.state = State::Undefined;
+ *             break;
  *     }
- *
- * private:
- *     StateMachine<State> _statemachine(state_names);
- * };
+ * }
  * @endcode
  */
 
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include <type_traits>
+#include <functional>
+#include <array>
+
 
 // A simple state machine for uint16_t-based enums
 template <typename StateT>
@@ -59,14 +64,19 @@ class StateMachine {
 
 private:
     static constexpr size_t _number_of_states = static_cast<size_t>(StateT::_ENUM_SIZE);
+    std::function<void(const std::string&)> _log_function; // Callable for logging
 
 public:
     StateT state;
     bool   state_changed;
 
-    StateMachine(const std::array<std::string, _number_of_states>& state_names)
-        : state(static_cast<StateT>(0)), state_changed(false), _cycles(0), _state_prev(static_cast<StateT>(0)), _state_names(state_names)
-    {
+    StateMachine(const std::array<std::string, _number_of_states>& state_names, std::function<void(const std::string&)> log_function)
+        : state(static_cast<StateT>(0)), 
+          state_changed(false), 
+          _cycles(0), 
+          _state_prev(static_cast<StateT>(0)), 
+          _state_names(state_names),
+          _log_function(log_function) {
         if (_state_names.size() < _number_of_states) {
             throw std::runtime_error("State names array does not have enough elements");
         }
@@ -81,7 +91,7 @@ public:
 
             // Log state change if a state name is provided
             if (!_state_names[static_cast<size_t>(state)].empty()) {
-                log_info("State changed from " + _state_names[static_cast<size_t>(_state_prev)] + " to " + _state_names[static_cast<size_t>(state)]);
+                _log_function(_state_names[static_cast<size_t>(state)]);
             }
             
             _cycles     = 0;

@@ -8,8 +8,9 @@ TODO: Split into driver and hal classes
 #pragma once
 
 #include "../Configuration/Configurable.h"
+#include "utils/HierarchicalLog.hpp"
 
-class HBridgeMotor : public Configuration::Configurable {
+class HBridgeMotor : public Configuration::Configurable, public HierarchicalLog {
 public:
     HBridgeMotor() = default;
 

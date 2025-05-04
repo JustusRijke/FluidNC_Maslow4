@@ -8,27 +8,28 @@
 #include "../Machine/MachineConfig.h"
 
 // Belt initialization logic.
-bool Belt::init(const char* name, I2CSwitch* i2c_switch) {
-    _name = name;
+bool Belt::init(I2CSwitch* i2c_switch) {
 
     if (_encoder == nullptr) {
-        log_error("Missing config: encoder " << name);
+        p_log_config_error("Missing config: encoder");
         return false;
     }
 
     if (_motor == nullptr) {
-        log_error("Missing config: motor " << name);
+        p_log_config_error("Missing config: motor");
         return false;
     }
 
     // Initialize the encoder with the I2C switch (dependency injection)
+    _encoder->initName("Encoder", this);
     if (!_encoder->init(i2c_switch))
         return false;
 
+    _motor->initName("Motor", this);
     if (!_motor->init())
         return false;
 
-    log_info("Belt " << name << " initialized");
+    p_log_info("Initialized.");
     return true;
 }
 

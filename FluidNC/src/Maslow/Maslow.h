@@ -10,10 +10,11 @@
 #include "I2CSwitch.h"
 #include "utils/CycleStats.hpp"
 #include "utils/StateMachine.hpp"
+#include "utils/HierarchicalLog.hpp"
 
 #include <array>
 
-class Maslow : public Configuration::Configurable {
+class Maslow : public Configuration::Configurable, public HierarchicalLog {
 public:
     Maslow();
 
@@ -54,7 +55,7 @@ private:
     // State machine
     StateMachine<eState> _sm;
     CycleStats          _cycle_stats { 10000 };  // Report every 10 seconds
-    inline void         log_state_change(const char* msg);
+    void                _log_state_change(const std::string& state_name);
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

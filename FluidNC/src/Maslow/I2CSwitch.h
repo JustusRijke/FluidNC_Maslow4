@@ -10,8 +10,9 @@ Its function is to
 #include "../Configuration/Configurable.h"
 #include "TCA9548.h"
 #include <cstdint>
+#include "utils/HierarchicalLog.hpp"
 
-class I2CSwitch : public Configuration::Configurable {
+class I2CSwitch : public Configuration::Configurable, public HierarchicalLog {
 public:
     I2CSwitch() = default;
 

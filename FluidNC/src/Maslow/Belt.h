@@ -7,8 +7,9 @@
 #include "../Configuration/Configurable.h"
 #include "Encoder.h"
 #include "HBridgeMotor.h"
+#include "utils/HierarchicalLog.hpp"
 
-class Belt : public Configuration::Configurable {
+class Belt : public Configuration::Configurable, public HierarchicalLog {
 public:
     Belt() = default;
 
@@ -16,7 +17,7 @@ public:
     Encoder* _encoder = nullptr;
     HBridgeMotor* _motor   = nullptr;
 
-    bool init(const char* name, I2CSwitch* i2c_switch);
+    bool init(I2CSwitch* i2c_switch);
     void cycle();
 
     void retract() {
@@ -33,7 +34,6 @@ public:
 
     private:
     // StateMachine<State> _sm;
-    const char* _name = nullptr;  // Identifier for the belt, e.g. "TL", "TR", etc.
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;
