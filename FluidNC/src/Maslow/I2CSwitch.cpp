@@ -23,7 +23,7 @@ bool I2CSwitch::init() {
     }
 
     p_log_info("Initialized (" << _scl_pin.name() << " (SCL), " << _sda_pin.name() << " (SDA), " << _frequency << "Hz, address "
-                                  << to_hex(_address) << ").");
+                               << to_hex(_address) << ").");
     return true;
 }
 

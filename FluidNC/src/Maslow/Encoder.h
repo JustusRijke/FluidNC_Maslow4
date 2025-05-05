@@ -24,7 +24,7 @@ public:
     uint16_t get_position();
 
 private:
-    AS5600  _rotation_meter;
+    AS5600 _rotation_meter;
 
     I2CSwitch* _i2c_switch = nullptr;
     uint8_t    _port       = 0;  // I2C port for the encoder
