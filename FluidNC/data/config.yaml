@@ -84,8 +84,11 @@ maslow:
     motor:
       fwd_pin: gpio.45
       rev_pin: gpio.21
-      current_sense_pin: gpio.18
       frequency: 4000
+      current_sense_pin: gpio.18
+      current_sense_resistor: 1500
+      overcurrent_warning: 1.0
+      overcurrent_error: 1.5
 
   tr:
     encoder:
@@ -93,8 +96,11 @@ maslow:
     motor:
       fwd_pin: gpio.42
       rev_pin: gpio.41
-      current_sense_pin: gpio.6
       frequency: 4000
+      current_sense_pin: gpio.6
+      current_sense_resistor: 1500
+      overcurrent_warning: 1.0
+      overcurrent_error: 1.5
 
   bl:
     encoder:
@@ -102,8 +108,11 @@ maslow:
     motor:
       fwd_pin: gpio.37
       rev_pin: gpio.36
-      current_sense_pin: gpio.8
       frequency: 4000
+      current_sense_pin: gpio.8
+      current_sense_resistor: 1500
+      overcurrent_warning: 1.0
+      overcurrent_error: 1.5
 
   br:
     encoder:
@@ -111,5 +120,8 @@ maslow:
     motor:
       fwd_pin: gpio.9
       rev_pin: gpio.3
-      current_sense_pin: gpio.7
       frequency: 4000
+      current_sense_pin: gpio.7
+      current_sense_resistor: 1500
+      overcurrent_warning: 1.0
+      overcurrent_error: 1.5

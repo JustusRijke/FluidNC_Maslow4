@@ -14,25 +14,13 @@ public:
     Belt() = default;
 
     // Components
-    Encoder* _encoder = nullptr;
+    Encoder*      _encoder = nullptr;
     HBridgeMotor* _motor   = nullptr;
 
     bool init(I2CSwitch* i2c_switch);
     void cycle();
 
-    void retract() {
-        _motor->reverse(4000);
-    }
-
-    void extent() {
-        _motor->forward(4000);
-    }
-
-    void stop() {
-        _motor->stop();
-    }
-
-    private:
+private:
     // StateMachine<State> _sm;
 
     // Configuration handler

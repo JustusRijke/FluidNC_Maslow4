@@ -9,7 +9,6 @@
 
 // Belt initialization logic.
 bool Belt::init(I2CSwitch* i2c_switch) {
-
     if (_encoder == nullptr) {
         p_log_config_error("Missing config: encoder");
         return false;
@@ -34,7 +33,9 @@ bool Belt::init(I2CSwitch* i2c_switch) {
 }
 
 // The main Belt state machine loop, called cyclically.
-void Belt::cycle() {}
+void Belt::cycle() {
+    _motor->update();
+}
 
 void Belt::group(Configuration::HandlerBase& handler) {
     handler.section("encoder", _encoder);

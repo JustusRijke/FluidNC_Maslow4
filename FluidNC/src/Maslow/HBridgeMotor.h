@@ -15,18 +15,28 @@ public:
     HBridgeMotor() = default;
 
     bool init();
+    void update();
 
-    void stop() { stop(false); }
-    void stop(bool brake);
-    void forward(uint32_t duty);
-    void reverse(uint32_t duty);
+    void set_speed(float speed);
+    void stop() { set_speed(0); };
+
+    float get_current();
+
+    // Status flags
+    bool overcurrent_warning = false;
+    bool overcurrent_error   = false;
 
 private:
     // Configuration
-    Pin         _current_sense_pin;
-    Pin         _fwd_pin;
-    Pin         _rev_pin;
-    uint32_t    _frequency = 4000;
+    Pin      _fwd_pin;
+    Pin      _rev_pin;
+    uint32_t _frequency = 4000;  // Hz
+    Pin      _current_sense_pin;
+    uint32_t _current_sense_resistor        = 1500;  // Ohm
+    float    _overcurrent_warning_threshold = 1.0;   // Amperes
+    float    _overcurrent_error_threshold   = 1.5;   // Amperes
+
+    static constexpr float FLOAT_NEAR_ZERO = 0.01f;  // Filter near-zero float values
 
     uint32_t _max_duty;
 
