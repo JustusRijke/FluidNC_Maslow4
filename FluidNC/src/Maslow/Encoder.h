@@ -20,14 +20,22 @@ public:
     Encoder() = default;
 
     bool init(I2CSwitch* i2c_switch);
+    void update();
 
-    uint16_t get_position();
+    void  set_mm_per_revolution(float mm_per_revolution);
+    float get_mm_per_revolution();
+    float get_position();
 
 private:
     AS5600 _rotation_meter;
 
     I2CSwitch* _i2c_switch = nullptr;
-    uint8_t    _port       = 0;  // I2C port for the encoder
+    uint8_t    _port       = 0;  // I2C port for the rotation meter
+
+    int32_t _revolutions       = 0;     // Cumulative position of the rotation meter (4096=1 full revolution)
+    float   _mm_per_revolution = 44.0;  // mm of movement per revolution of the encoder gear
+
+    float _revolutions_to_mm = 0;  // helper variable to avoid division in get_position()
 
     // Configuration handlers
     void group(Configuration::HandlerBase& handler) override;

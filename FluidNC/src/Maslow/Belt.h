@@ -18,11 +18,9 @@ public:
     HBridgeMotor* _motor   = nullptr;
 
     bool init(I2CSwitch* i2c_switch);
-    void cycle();
+    void update();
 
 private:
-    // StateMachine<State> _sm;
-
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;
 };

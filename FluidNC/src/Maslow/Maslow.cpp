@@ -3,22 +3,22 @@
 // following exception: it may not be used for any reason by MakerMade or anyone with a business or personal connection to MakerMade
 
 #include "Maslow.h"
-#include "../System.h"
 
 #include "../Logging.h"
+#include "../System.h"
 
 // TODO: Remove after debugging
 extern TaskHandle_t maslowTaskHandle;
 
 // Constructor for the Maslow class. Initializes the state machine.
-Maslow::Maslow() : _sm(_state_names, [this](const std::string& msg) { _log_state_change(msg); }){
+Maslow::Maslow() : _sm(_state_names, [this](const std::string& msg) { _log_state_change(msg); }) {
     _sm.ms_per_cycle = _cycle_time;
     _sm.state        = eState::Entrypoint;
 }
 
 // Maslow initialization logic.
 bool Maslow::init() {
-    initName("Maslow", nullptr); // For hierarchical naming when logging
+    initName("Maslow", nullptr);  // For hierarchical naming when logging
 
     if (_i2c_switch == nullptr) {
         p_log_config_error("Missing config: i2c_switch");
@@ -45,9 +45,13 @@ bool Maslow::init() {
 }
 
 // The main Maslow state machine loop, called cyclically.
-void Maslow::cycle() {
+void Maslow::update() {
     // Cycle time measurement
     _cycle_stats.track_cycles();
+
+    for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
+        _belts[i]->update();
+    }
 
     // Update the state machine, so we can check state changes and time spent in state.
     _sm.update();
@@ -55,14 +59,62 @@ void Maslow::cycle() {
     switch (_sm.state) {
         case eState::Entrypoint:
             // Entry point logic: do nothing but move to an initial state.
-            _sm.state = eState::Report;
+            _sm.state = eState::Idle;
+            break;
+
+        case eState::Idle:
+            // Check if the system is in a state that requires action.
+            // System state descriptions (from Types.h):
+            //  Idle: The system is idle and waiting for a command.
+            //  Alarm: In alarm state. Locks out all g-code processes. Allows settings access.
+            //  CheckMode: G-code check mode. Locks out planner and motion only.
+            //  Homing: Performing homing cycle
+            //  Cycle: Cycle is running or motions are being executed.
+            //  Hold: Active feed hold
+            //  Jog: Jogging mode
+            //  SafetyDoor: Safety door is ajar. Feed holds and de-energizes system
+            //  Sleep: Sleep state
+            //  ConfigAlarm: You can't do anything but fix your config file
+            //  Critical: You can't do anything but reset with CTRL-x or the reset button
+            switch (sys.state) {
+                case State::Idle:
+                case State::Alarm:
+                case State::CheckMode:
+                case State::Homing:
+                case State::Cycle:
+                case State::Hold:
+                case State::SafetyDoor:
+                case State::Sleep:
+                case State::ConfigAlarm:
+                case State::Critical:
+                    // Do nothing.
+                    break;
+
+                case State::Jog:
+                    _sm.state = eState::Jog;
+                    break;
+
+                default:
+                    p_log_fatal("Unexpected system state: " << static_cast<size_t>(sys.state));
+                    _sm.state = eState::FatalError;
+                    break;
+            }
+            break;
+
+        case eState::Jog:
+            if ((_sm.state_changed) || (_sm.time_in_state() > 500)) {
+                _sm.reset_time_in_state();
+                p_log_info("Target mpos x: " << steps_to_mpos(get_axis_motor_steps(X_AXIS), X_AXIS));
+            }
+
+            if (sys.state != State::Jog) {
+                _sm.state = eState::Idle;
+            }
             break;
 
         case eState::Report:
             if ((_sm.state_changed) || (_sm.time_in_state() > 5000)) {
                 _sm.reset_time_in_state();
-
-                // p_log_info("Raw angle: " << position);
 
                 // Log Maslow task stack size for debugging
                 UBaseType_t stackHWM_Words = uxTaskGetStackHighWaterMark(maslowTaskHandle);
@@ -71,16 +123,26 @@ void Maslow::cycle() {
             break;
 
         case eState::Test:
-            if (_sm.state_changed){
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->retract();}
-
-            if ((_sm.time_in_state() > 500)  && (_sm.time_in_state() < 510)){
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->extent();
+            if (_sm.state_changed) {
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_speed(-0.8f);
+                p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
             }
 
-            if (_sm.time_in_state() > 900) {
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->stop();
-                p_log_info("Test state timeout, moving to Report state");
+            if ((_sm.time_in_state() > 250) && (_sm.time_in_state() < 260)) {
+                // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
+            }
+
+            if ((_sm.time_in_state() > 1000) && (_sm.time_in_state() < 1010)) {
+                p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_speed(0.8f);
+            }
+
+            // if ((_sm.time_in_state() > 750) && (_sm.time_in_state() < 770)) {
+            // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
+            // }
+
+            if (_sm.time_in_state() > 1800) {
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->stop();
                 _sm.state = eState::Report;
             }
             break;
@@ -91,7 +153,7 @@ void Maslow::cycle() {
 
         case eState::Undefined:
             // Oops, we should never end up here. Fatal programming error.
-            p_log_error("Entered undefined state");
+            p_log_fatal("Entered undefined state");
             _sm.state = eState::FatalError;
             break;
 

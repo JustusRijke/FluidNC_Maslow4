@@ -48,8 +48,8 @@ void maslow_task_function(void* pvParameters) {
         // Wait for the next cycle.
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
-        // Call the Maslow cycle function
-        config->_maslow->cycle();
+        // Call the Maslow update function
+        config->_maslow->update();
     }
 }
 
@@ -100,13 +100,13 @@ void setup() {
             }
         }
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#    ifdef CONFIG_IDF_TARGET_ESP32S3
         // I2S not (yet) implemented for ESP32-S3
-#else
+#    else
         if (config->_i2so) {
             config->_i2so->init();
         }
-#endif
+#    endif
         if (config->_spi) {
             config->_spi->init();
 

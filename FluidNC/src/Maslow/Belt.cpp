@@ -33,8 +33,9 @@ bool Belt::init(I2CSwitch* i2c_switch) {
 }
 
 // The main Belt state machine loop, called cyclically.
-void Belt::cycle() {
+void Belt::update() {
     _motor->update();
+    _encoder->update();
 }
 
 void Belt::group(Configuration::HandlerBase& handler) {

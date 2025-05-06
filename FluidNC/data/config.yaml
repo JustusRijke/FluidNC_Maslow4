@@ -80,7 +80,8 @@ maslow:
   # Belts
   tl:
     encoder:
-      port: 0
+      port: 2
+      mm_per_revolution: 44.0
     motor:
       fwd_pin: gpio.45
       rev_pin: gpio.21
@@ -93,6 +94,7 @@ maslow:
   tr:
     encoder:
       port: 1
+      mm_per_revolution: 44.0
     motor:
       fwd_pin: gpio.42
       rev_pin: gpio.41
@@ -104,7 +106,8 @@ maslow:
 
   bl:
     encoder:
-      port: 2
+      port: 3
+      mm_per_revolution: 44.0
     motor:
       fwd_pin: gpio.37
       rev_pin: gpio.36
@@ -116,7 +119,8 @@ maslow:
 
   br:
     encoder:
-      port: 3
+      port: 0
+      mm_per_revolution: 44.0
     motor:
       fwd_pin: gpio.9
       rev_pin: gpio.3
