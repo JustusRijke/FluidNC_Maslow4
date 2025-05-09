@@ -12,7 +12,7 @@ extern TaskHandle_t maslowTaskHandle;
 
 // Constructor for the Maslow class. Initializes the state machine.
 Maslow::Maslow() : _sm(_state_names, [this](const std::string& msg) { _log_state_change(msg); }) {
-    _sm.ms_per_cycle = _cycle_time;
+    _sm.ms_per_cycle = cycle_time;
     _sm.state        = eState::Entrypoint;
 }
 
@@ -21,7 +21,7 @@ bool Maslow::init() {
     initName("Maslow", nullptr);  // For hierarchical naming when logging
 
     if (_i2c_switch == nullptr) {
-        p_log_config_error("Missing config: i2c_switch");
+        p_log_config_error("I2C Switch not defined");
         return false;
     }
 
@@ -35,7 +35,7 @@ bool Maslow::init() {
             return false;
         }
         _belts[i]->initName(BELT_NAMES[i], this);
-        if (!_belts[i]->init(_i2c_switch)) {
+        if (!_belts[i]->init(_i2c_switch, cycle_time)) {
             return false;
         }
     }
@@ -124,37 +124,44 @@ void Maslow::update() {
 
         case eState::Test:
             if (_sm.state_changed) {
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_speed(-0.8f);
-                p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->retract();
+                // p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
             }
 
-            if ((_sm.time_in_state() > 250) && (_sm.time_in_state() < 260)) {
-                // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
-            }
-
-            if ((_sm.time_in_state() > 1000) && (_sm.time_in_state() < 1010)) {
-                p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_speed(0.8f);
-            }
-
-            // if ((_sm.time_in_state() > 750) && (_sm.time_in_state() < 770)) {
-            // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
+            // if ((_sm.time_in_state() > 250) && (_sm.time_in_state() < 260)) {
+            //     // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
             // }
 
-            if (_sm.time_in_state() > 1800) {
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->stop();
+            // if ((_sm.time_in_state() > 1000) && (_sm.time_in_state() < 1010)) {
+            //     // p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
+            //     _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_speed(0.8f);
+            // }
+
+            // // if ((_sm.time_in_state() > 750) && (_sm.time_in_state() < 770)) {
+            // // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
+            // // }
+            if (_belts[static_cast<size_t>(eBelt::TopLeft)]->status() == Belt::BeltStatus::COMPLETED_SUCCESS) {
+                p_log_info("Motor retracted");
+                _sm.state = eState::Idle;
+            }
+
+            if (_sm.time_in_state() > 2000) {
+                // Safeguard
+                p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->reset();
                 _sm.state = eState::Report;
             }
             break;
 
-        case eState::FatalError:
-            // TODO - Add code to handle fatal error, e.g. stop motors, turn off power, etc.
-            break;
-
         case eState::Undefined:
             // Oops, we should never end up here. Fatal programming error.
-            p_log_fatal("Entered undefined state");
-            _sm.state = eState::FatalError;
+            if (_sm.state_changed) {
+                p_log_fatal("Entered undefined state");
+            }
+            break;
+
+        case eState::FatalError:
+            // We're done...
             break;
 
         default:
@@ -168,15 +175,20 @@ void Maslow::_log_state_change(const std::string& state_name) {
     p_log_info("State changed to " << state_name)
 }
 
-// External function to request a state change.
-void Maslow::request_state_change(eState new_state) {
-    // Add conditional logic here if needed, for example
-    // check if the new state is valid or if the current state allows the transition.
-    _sm.state = new_state;
+// For testing during development
+void Maslow::test() {
+    _sm.state = eState::Test;
+}
+
+void Maslow::reset() {
+    // Reset belt errors
+    for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
+        _belts[i]->reset();
+    }
 }
 
 void Maslow::group(Configuration::HandlerBase& handler) {
-    handler.item("cycle_time", _cycle_time, 1, 100);
+    handler.item("cycle_time", cycle_time, 1, 100);
 
     handler.section("i2c_switch", _i2c_switch);
 

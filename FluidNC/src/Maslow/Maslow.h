@@ -19,7 +19,7 @@ public:
     Maslow();
 
     // Configuration
-    uint8_t _cycle_time = 5;  // [ms] Maslow task cycle time
+    uint8_t cycle_time = 5;  // [ms] Maslow task cycle time
 
     // Components
     I2CSwitch* _i2c_switch = nullptr;  // I2C switch for the encoders
@@ -28,20 +28,19 @@ public:
     static constexpr char BELT_NAMES[NUMBER_OF_BELTS][3] = { "TL", "TR", "BL", "BR" };
     enum class eBelt { TopLeft, TopRight, BottomLeft, BottomRight };
     Belt* _belts[NUMBER_OF_BELTS] = { nullptr, nullptr, nullptr, nullptr };
-
-    // States
-    enum class eState : uint16_t { Undefined, Entrypoint, Idle, Jog, Report, Test, FatalError, _ENUM_SIZE };
-    const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = { "Undefined", "Entrypoint", "Idle",      "Jog",
-                                                                                            "Report",    "Test",       "FatalError" };
-
     bool init();    // Called once to perform initialization logic
     void update();  // Called periodically to perform state machine logic
 
-    void request_state_change(eState new_state);
+    void test();
+    void reset();
 
 private:
     // State machine
-    StateMachine<eState> _sm;
+    enum class eState : uint16_t { Undefined, Entrypoint, Idle, Jog, Report, Test, FatalError, _ENUM_SIZE };
+    const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = { "Undefined", "Entrypoint", "Idle",      "Jog",
+                                                                                            "Report",    "Test",       "FatalError" };
+    StateMachine<eState>                                                   _sm;
+
     CycleStats           _cycle_stats { 10000 };  // Report every 10 seconds
     void                 _log_state_change(const std::string& state_name);
 
