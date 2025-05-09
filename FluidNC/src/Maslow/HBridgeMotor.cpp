@@ -37,22 +37,30 @@ bool HBridgeMotor::init() {
 
 // Called periodically to check current limits
 void HBridgeMotor::update() {
-    float current       = get_current();
-    overcurrent_error   = (current >= _overcurrent_error_threshold);
-    overcurrent_warning = (current >= _overcurrent_warning_threshold);
+    // Read the current sense pin and convert to Amperes:
+    // Convert IPROPI voltage (V) to motor current (I_OUT in Amperes)
+    // Read the IPROPI pin voltage directly in millivolts (ESP32 specific)
+    // Note: ESP32 ADCs are non-linear, the return value will be an estimate.
+    // Store the rolling average to filter out noise.
+    float sample = (float)analogReadMilliVolts(_current_sense_pin.index()) / _current_sense_resistor;
+    _current     = _rolling_average_current.update(sample);
+
+    overcurrent_error   = (_current >= _overcurrent_error_threshold);
+    overcurrent_warning = (_current >= _overcurrent_warning_threshold);
 }
 
 // Speed: -1.0 (full reverse) to 1.0 (full forward). 0.0 is stop.
 void HBridgeMotor::set_speed(float speed) {
-    speed = std::clamp(speed, -1.0f, 1.0f);
+    _speed = std::clamp(speed, -1.0f, 1.0f);
 
     // Set the duty cycle based on the speed
-    uint32_t duty = static_cast<uint32_t>(abs(speed) * _max_duty);
+    uint32_t duty = static_cast<uint32_t>(abs(_speed) * _max_duty);
 
-    if (speed < -FLOAT_NEAR_ZERO) {
+    float directed_speed = _reverse ? -_speed : _speed;
+    if (directed_speed < -FLOAT_NEAR_ZERO) {
         _rev_pin.setDuty(duty);
         _fwd_pin.setDuty(0);
-    } else if (speed > FLOAT_NEAR_ZERO) {
+    } else if (directed_speed > FLOAT_NEAR_ZERO) {
         _fwd_pin.setDuty(duty);
         _rev_pin.setDuty(0);
     } else {  // NaN or near zero: stop
@@ -61,14 +69,14 @@ void HBridgeMotor::set_speed(float speed) {
     }
 }
 
+// Return the speed (-1.0...1.0)
+float HBridgeMotor::get_speed() {
+    return _speed;
+}
+
 // Returns the current in Amperes
 float HBridgeMotor::get_current() {
-    // Convert IPROPI voltage (V) to motor current (I_OUT in Amperes)
-    // Read the IPROPI pin voltage directly in millivolts (ESP32 specific)
-    // Note: ESP32 ADCs are non-linear, the return value will be an estimate.
-    // Filter the value to avoid noise by using a low-pass filter (capacitor),
-    // or by averaging multiple readings - this is not implemented here.
-    return (float)analogReadMilliVolts(_current_sense_pin.index()) / _current_sense_resistor;
+    return _current;
 }
 
 void HBridgeMotor::group(Configuration::HandlerBase& handler) {
@@ -79,4 +87,5 @@ void HBridgeMotor::group(Configuration::HandlerBase& handler) {
     handler.item("current_sense_resistor", _current_sense_resistor, 1, 100000);
     handler.item("overcurrent_warning", _overcurrent_warning_threshold, 0.1f, 100.0f);
     handler.item("overcurrent_error", _overcurrent_error_threshold, 0.1f, 100.0f);
+    handler.item("reverse", _reverse);
 }
