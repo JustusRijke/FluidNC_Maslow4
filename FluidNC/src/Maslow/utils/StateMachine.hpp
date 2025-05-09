@@ -63,15 +63,17 @@ class StateMachine {
 
 private:
     static constexpr size_t                 _number_of_states = static_cast<size_t>(StateT::_ENUM_SIZE);
-    std::function<void(const std::string&)> _log_function;  // Callable for logging
+    std::function<void(const std::string&)> _log_callback;  // Callable for logging
 
 public:
     StateT state;
     bool   state_changed;
 
-    StateMachine(const std::array<std::string, _number_of_states>& state_names, std::function<void(const std::string&)> log_function) :
+    StateMachine() {}  // Default constructor, without state name logging
+
+    StateMachine(const std::array<std::string, _number_of_states>& state_names, std::function<void(const std::string&)> log_callback) :
         state(static_cast<StateT>(0)), state_changed(false), _cycles(0), _state_prev(static_cast<StateT>(0)), _state_names(state_names),
-        _log_function(log_function) {
+        _log_callback(log_callback) {
         if (_state_names.size() < _number_of_states) {
             throw std::runtime_error("State names array does not have enough elements");
         }
@@ -83,11 +85,10 @@ public:
     void update() {
         state_changed = (state != _state_prev);
         if (state_changed) {
-            // Log state change if a state name is provided
-            if (!_state_names[static_cast<size_t>(state)].empty()) {
-                _log_function(_state_names[static_cast<size_t>(state)]);
+            // Log state change if a state name is provided and state_names array is initialized
+            if (!_state_names.empty() && !_state_names[static_cast<size_t>(state)].empty()) {
+                _log_callback(_state_names[static_cast<size_t>(state)]);
             }
-
             _cycles     = 0;
             _state_prev = state;
         } else {
