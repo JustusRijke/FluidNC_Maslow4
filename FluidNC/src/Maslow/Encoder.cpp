@@ -1,6 +1,7 @@
 #include "Encoder.h"
 
-#include "../Machine/MachineConfig.h"
+//#include "../Machine/MachineConfig.h"
+#include "utils/HierarchicalLog.hpp"
 
 bool Encoder::init(I2CSwitch* i2c_switch) {
     _i2c_switch = i2c_switch;
@@ -20,6 +21,16 @@ bool Encoder::init(I2CSwitch* i2c_switch) {
         p_log_config_error("Magnet not detected");
         return false;
     }
+
+    if (_rotation_meter.magnetTooStrong()) {
+        p_log_warn("Magnet too strong");
+    }
+
+    if (_rotation_meter.magnetTooWeak()) {
+        p_log_warn("Magnet too weak");
+    }
+
+    // TODO: encoder has tuning options (filters etc), useful?
 
     set_mm_per_revolution(_mm_per_revolution);
 
@@ -41,9 +52,15 @@ float Encoder::get_mm_per_revolution() {
     return _mm_per_revolution;
 }
 
-// Return cumulative position of the encoder in mm
+// Return position of the encoder in mm
 float Encoder::get_position() {
     return static_cast<double>(_revolutions) * _revolutions_to_mm;
+}
+
+// Set the encoder position in mm
+void Encoder::set_position(float position = 0.0f) {
+    _rotation_meter.resetCumulativePosition(static_cast<int32_t>(position / _revolutions_to_mm));
+    update();
 }
 
 void Encoder::group(Configuration::HandlerBase& handler) {

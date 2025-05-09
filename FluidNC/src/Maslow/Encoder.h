@@ -11,7 +11,6 @@ Its function is to
 #include "../Configuration/Configurable.h"
 #include "AS5600.h"
 #include "I2CSwitch.h"
-#include "utils/HierarchicalLog.hpp"
 
 #include <cstdint>
 
@@ -25,6 +24,7 @@ public:
     void  set_mm_per_revolution(float mm_per_revolution);
     float get_mm_per_revolution();
     float get_position();
+    void  set_position(float position);
 
 private:
     AS5600 _rotation_meter;
@@ -33,9 +33,9 @@ private:
     uint8_t    _port       = 0;  // I2C port for the rotation meter
 
     int32_t _revolutions       = 0;     // Cumulative position of the rotation meter (4096=1 full revolution)
-    float   _mm_per_revolution = 44.0;  // mm of movement per revolution of the encoder gear
+    float   _mm_per_revolution = 44.0f;  // mm of movement per revolution of the encoder gear
 
-    float _revolutions_to_mm = 0;  // helper variable to avoid division in get_position()
+    float _revolutions_to_mm = 0.0f;  // helper variable to avoid division in get_position()
 
     // Configuration handlers
     void group(Configuration::HandlerBase& handler) override;
