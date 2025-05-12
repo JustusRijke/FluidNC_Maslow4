@@ -45,7 +45,7 @@ private:
     float    _speed    = 0.0f;
     float    _current  = 0.0f;
 
-    RollingAverage<50> _rolling_average_current;  // 50 samples x 5ms cycles = 250ms rolling average filter for current measurement
+    RollingAverage<20> _rolling_average_current;  // 20 samples x 10ms cycles = 200ms rolling average filter for current measurement
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

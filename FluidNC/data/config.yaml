@@ -66,9 +66,9 @@ maslow:
 
   # [ms] Time between each cycle of the main loop (FreeRTOS task).
   # The main loop reads the encoders and updates belt motor speeds.
-  # This is the minimum time between each cycle, but the actual time may be longer if the loop takes longer to execute.
-  # Minimum seems to be around 2ms.
-  cycle_time: 5
+  # This is the minimum time between each cycle, but the actual time may be longer if 
+  # the loop takes longer to execute, in which case an warning is issued.
+  cycle_time: 10
 
   # I2C switch for the belt encoders
   i2c_switch:

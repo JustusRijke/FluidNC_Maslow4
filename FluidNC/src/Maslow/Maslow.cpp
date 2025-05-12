@@ -43,7 +43,7 @@ bool Maslow::init() {
 // The main Maslow state machine loop, called cyclically.
 void Maslow::update() {
     // Cycle time measurement
-    _cycle_stats.track_cycles();
+    _cycle_stats.track_cycles(cycle_time * 1250);  // Warn when cycle time is exceeded by 25%
 
     for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
         _belts[i]->update();

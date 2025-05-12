@@ -40,9 +40,11 @@ public:
      * since the last call, updates the cycle statistics, and reports the statistics via
      * `log_info()` after a specified time interval.
      */
-    void track_cycles() {
+    void track_cycles(uint32_t expected_cycle_time, bool verbose = false) {
         // Cycle time measurement
         uint32_t now        = micros();
+        if (_last_micros == 0)
+            _last_micros = now;
         uint32_t cycle_time = now - _last_micros;
         _last_micros        = now;
 
@@ -55,7 +57,10 @@ public:
         // Reporting
         if (_total_cycle_time >= _report_interval * 1000) {
             uint32_t mean_cycle_time = _total_cycle_time / _cycle_counter;
-            log_info("Cycle stats: min=" << _min_cycle_time << "us, max=" << _max_cycle_time << "us, mean=" << mean_cycle_time << "us");
+            if (verbose)
+                log_info("Cycle stats: min=" << _min_cycle_time << "us, max=" << _max_cycle_time << "us, mean=" << mean_cycle_time << "us");
+            if (_max_cycle_time > expected_cycle_time)
+                log_warn("Cycle time exceeded: " << _max_cycle_time << "us (max: " << expected_cycle_time << "us)");
             _min_cycle_time   = UINT32_MAX;
             _max_cycle_time   = 0;
             _total_cycle_time = 0;
