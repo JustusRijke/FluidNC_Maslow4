@@ -9,12 +9,11 @@
 #include "Encoder.h"
 #include "I2CSwitch.h"
 #include "utils/CycleStats.hpp"
-#include "utils/HierarchicalLog.hpp"
 #include "utils/StateMachine.hpp"
 
 #include <array>
 
-class Maslow : public Configuration::Configurable, public HierarchicalLog {
+class Maslow : public Configuration::Configurable {
 public:
     Maslow();
 

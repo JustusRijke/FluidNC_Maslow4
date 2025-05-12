@@ -18,14 +18,11 @@ Maslow::Maslow() : _sm(_state_names, [this](const std::string& msg) { _log_state
 
 // Maslow initialization logic.
 bool Maslow::init() {
-    initName("Maslow", nullptr);  // For hierarchical naming when logging
-
     if (_i2c_switch == nullptr) {
         p_log_config_error("I2C Switch not defined");
         return false;
     }
 
-    _i2c_switch->initName("I2C Switch", this);
     if (!_i2c_switch->init())
         return false;
 
@@ -34,7 +31,6 @@ bool Maslow::init() {
             p_log_config_error("Missing config: belt " << BELT_NAMES[i]);
             return false;
         }
-        _belts[i]->initName(BELT_NAMES[i], this);
         if (!_belts[i]->init(_i2c_switch, cycle_time)) {
             return false;
         }

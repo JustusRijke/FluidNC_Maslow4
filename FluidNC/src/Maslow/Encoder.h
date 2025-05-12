@@ -14,7 +14,7 @@ Its function is to
 
 #include <cstdint>
 
-class Encoder : public Configuration::Configurable, public HierarchicalLog {
+class Encoder : public Configuration::Configurable {
 public:
     Encoder() = default;
 

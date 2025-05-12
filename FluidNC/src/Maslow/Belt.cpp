@@ -6,7 +6,6 @@
 
 #include "../Logging.h"
 #include "../Machine/MachineConfig.h"
-#include "utils/HierarchicalLog.hpp"
 
 // Belt initialization logic.
 bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
@@ -21,11 +20,9 @@ bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
     }
 
     // Initialize the encoder with the I2C switch (dependency injection)
-    _encoder->initName("Encoder", this);
     if (!_encoder->init(i2c_switch))
         return false;
 
-    _motor->initName("Motor", this);
     if (!_motor->init())
         return false;
 

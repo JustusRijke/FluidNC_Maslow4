@@ -21,6 +21,8 @@ namespace Configuration {
         void enterSection(const char* name, Configuration::Configurable* section) override {
             _path.push_back(name);  // For error handling
 
+            section->setConfigPath(buildCurrentPath());  // Store the path in the section object
+
             // On entry, the token is for the section that invoked us.
             // We will handle following nodes with indents greater than entryIndent
             int entryIndent = _parser._token._indent;
@@ -164,5 +166,14 @@ namespace Configuration {
         }
 
         HandlerType handlerType() override { return HandlerType::Parser; }
+
+    private:
+        std::string buildCurrentPath() {
+            std::stringstream ss;
+            for (const char* part : _path) {
+                ss << '/' << part;
+            }
+            return ss.str();
+        }
     };
 }

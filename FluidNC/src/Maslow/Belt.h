@@ -9,7 +9,7 @@
 #include "HBridgeMotor.h"
 #include "utils/StateMachine.hpp"
 
-class Belt : public Configuration::Configurable, public HierarchicalLog {
+class Belt : public Configuration::Configurable {
 public:
     Belt() = default;
 
