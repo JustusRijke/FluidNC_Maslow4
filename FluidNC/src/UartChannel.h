@@ -54,7 +54,7 @@ public:
 #if ARDUINO_USB_CDC_ON_BOOT == 1
     HWCDC* uart() { return _uart; }
 #else
-    Uart* uart() { return _uart; }
+    Uart*  uart() { return _uart; }
 #endif
 
     bool setAttr(int index, bool* valuep, const std::string& s);
