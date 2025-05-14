@@ -17,8 +17,11 @@ class Maslow : public Configuration::Configurable {
 public:
     Maslow();
 
+    bool init();    // Called once to perform initialization logic
+    void update();  // Called periodically to perform state machine logic
+
     // Configuration
-    uint8_t cycle_time = 10;  // [ms] Maslow task cycle time
+    uint8_t cycle_time = 10;  // [ms] Maslow task cycle time (used by Main.cpp to setup the Maslow task)
 
     // Reporting
     bool report_HWM = false;  // Report high water mark of the task stack
@@ -27,17 +30,15 @@ public:
     bool cmd_reset = false;
     bool cmd_test  = false;  // Test command for debugging
 
-    // Components
-    I2CSwitch* _i2c_switch = nullptr;  // I2C switch for the encoders
-
+private:
     static constexpr int  NUMBER_OF_BELTS                = 4;
     static constexpr char BELT_NAMES[NUMBER_OF_BELTS][3] = { "TL", "TR", "BL", "BR" };
     enum class eBelt { TopLeft, TopRight, BottomLeft, BottomRight };
-    Belt* _belts[NUMBER_OF_BELTS] = { nullptr, nullptr, nullptr, nullptr };
-    bool init();    // Called once to perform initialization logic
-    void update();  // Called periodically to perform state machine logic
 
-private:
+    // Components
+    Belt*      _belts[NUMBER_OF_BELTS] = { nullptr, nullptr, nullptr, nullptr };
+    I2CSwitch* _i2c_switch             = nullptr;  // I2C switch for the belt encoders
+
     // State machine
     enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Jog, Test, Reset, FatalError, _ENUM_SIZE };
     const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = { "Undefined", "Entrypoint", "WaitForCommand",

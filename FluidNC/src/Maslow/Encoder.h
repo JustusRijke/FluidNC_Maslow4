@@ -27,14 +27,15 @@ public:
     void  set_position(float position);
 
 private:
-    AS5600 _rotation_meter;
-
+    // Components
+    AS5600     _rotation_meter;
     I2CSwitch* _i2c_switch = nullptr;
+
+    // Configuration
     uint8_t    _port       = 0;  // I2C port for the rotation meter
+    float      _mm_per_revolution = 44.0f;  // mm of movement per revolution of the encoder gear
 
     int32_t _revolutions       = 0;     // Cumulative position of the rotation meter (4096=1 full revolution)
-    float   _mm_per_revolution = 44.0f;  // mm of movement per revolution of the encoder gear
-
     float _revolutions_to_mm = 0.0f;  // helper variable to avoid division in get_position()
 
     // Configuration handlers

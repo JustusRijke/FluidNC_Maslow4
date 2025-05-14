@@ -151,7 +151,7 @@ void Maslow::update() {
 
             if (_sm.time_in_state() > 2000) {
                 // Safeguard
-                p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
+                // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
                 _belts[static_cast<size_t>(eBelt::TopLeft)]->cmd_reset = true;
                 _sm.state                                              = eState::WaitForCommand;
             }

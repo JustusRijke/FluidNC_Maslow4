@@ -16,17 +16,18 @@ class I2CSwitch : public Configuration::Configurable {
 public:
     I2CSwitch() = default;
 
+    bool init();
+    void select_port(uint8_t port);
+
+private:
+    // Components
+    TCA9548* _i2c_mux = nullptr;  // TCA9546A I2C switch hardware driver
+
     // Configuration
     Pin      _sda_pin;
     Pin      _scl_pin;
     uint8_t  _address   = 0x70;    // I2C address of TCA9546A switch
     uint32_t _frequency = 400000;  // I2C bus frequency
-
-    bool init();
-    void select_port(uint8_t port);
-
-private:
-    TCA9548* _i2c_mux = nullptr;  // TCA9546A I2C switch hardware driver
 
     // Configuration handlers
     void group(Configuration::HandlerBase& handler) override;
