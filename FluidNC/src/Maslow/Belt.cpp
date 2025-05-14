@@ -71,6 +71,16 @@ void Belt::update() {
             break;
 
         case eState::WaitForCommand:
+            if (_sm.state_changed) {
+                // Reset all commands
+                cmd_retract = false;
+                cmd_reset   = false;
+            }
+            // Handle all commands in order of priority.
+            if (cmd_reset)
+                _sm.state = eState::Reset;
+            else if (cmd_retract)
+                _sm.state = eState::Retract;
             break;
 
         case eState::Retract:
@@ -81,17 +91,21 @@ void Belt::update() {
                 // If the motor is in overcurrent error, stop the motor
                 _motor->stop();
                 p_log_error("Motor overcurrent error");
-                _status   = BeltStatus::COMPLETED_ERROR;
                 _sm.state = eState::Error;
             }
             if (_motor->get_current() > _retract_current) {
                 // If the motor current exceeds the threshold, stop the motor
                 _motor->stop();
                 _encoder->set_position(0.0f);
-                _status   = BeltStatus::COMPLETED_SUCCESS;
                 _sm.state = eState::WaitForCommand;
             }
             // TODO: timeout for retracting?
+            break;
+
+        case eState::Reset:
+            // Hard reset: stop motor and return to an idle state
+            _motor->stop();
+            _sm.state = eState::WaitForCommand;
             break;
 
         case eState::Error:
@@ -114,30 +128,16 @@ void Belt::update() {
     }
 }
 
-void Belt::retract() {
-    if (_sm.state == eState::WaitForCommand) {
-        _sm.state = eState::Retract;
-        _status   = BeltStatus::BUSY;
-    } else if (_sm.state == eState::Retract) {
-        p_log_warn("Already retracting");
-    } else {
-        _status = BeltStatus::COMPLETED_ERROR;
-        p_log_error("Cannot retract while in state " << static_cast<uint16_t>(_sm.state));
-    }
-}
-
-// Hard reset: stop motor and return to an idle state
-void Belt::reset() {
-    _motor->stop();
-    _sm.state = eState::WaitForCommand;
-    _status   = BeltStatus::IDLE;
-}
-
 void Belt::group(Configuration::HandlerBase& handler) {
+    // Components
     handler.section("encoder", _encoder);
     handler.section("motor", _motor);
 
+    // Configuration
     handler.item("retract_speed", _retract_speed, 0.01f, 1.0f);
     handler.item("retract_current", _retract_current, 0.01f, 100.0f);
     handler.item("max_direction_errors", _max_direction_errors, 0, 100);
+
+    // Commands
+    handler.item("cmd_retract", cmd_retract);
 }

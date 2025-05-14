@@ -49,51 +49,74 @@ void Maslow::update() {
         _belts[i]->update();
     }
 
+    // Reporting
+    if (report_HWM) {
+        // Log Maslow task stack size for debugging
+        UBaseType_t stackHWM_Words = uxTaskGetStackHighWaterMark(maslowTaskHandle);
+        p_log_info("Maslow task stack High Water Mark (HWM): " << stackHWM_Words << " bytes free");
+        report_HWM = false;
+    }
+
     // Update the state machine, so we can check state changes and time spent in state.
     _sm.update();
 
     switch (_sm.state) {
         case eState::Entrypoint:
             // Entry point logic: do nothing but move to an initial state.
-            _sm.state = eState::Idle;
+            _sm.state = eState::WaitForCommand;
             break;
 
-        case eState::Idle:
-            // Check if the system is in a state that requires action.
-            // System state descriptions (from Types.h):
-            //  Idle: The system is idle and waiting for a command.
-            //  Alarm: In alarm state. Locks out all g-code processes. Allows settings access.
-            //  CheckMode: G-code check mode. Locks out planner and motion only.
-            //  Homing: Performing homing cycle
-            //  Cycle: Cycle is running or motions are being executed.
-            //  Hold: Active feed hold
-            //  Jog: Jogging mode
-            //  SafetyDoor: Safety door is ajar. Feed holds and de-energizes system
-            //  Sleep: Sleep state
-            //  ConfigAlarm: You can't do anything but fix your config file
-            //  Critical: You can't do anything but reset with CTRL-x or the reset button
-            switch (sys.state) {
-                case State::Idle:
-                case State::Alarm:
-                case State::CheckMode:
-                case State::Homing:
-                case State::Cycle:
-                case State::Hold:
-                case State::SafetyDoor:
-                case State::Sleep:
-                case State::ConfigAlarm:
-                case State::Critical:
-                    // Do nothing.
-                    break;
+        case eState::WaitForCommand:
+            if (_sm.state_changed) {
+                // Reset all commands
+                cmd_reset = false;
+                cmd_test  = false;
+            }
 
-                case State::Jog:
-                    _sm.state = eState::Jog;
-                    break;
+            // Handle all commands in order of priority.
+            if (cmd_reset)
+                _sm.state = eState::Reset;
+            else if (cmd_test)
+                _sm.state = eState::Test;
+            else {
+                // No command given -> wait for system state changes.
 
-                default:
-                    p_log_fatal("Unexpected system state: " << static_cast<size_t>(sys.state));
-                    _sm.state = eState::FatalError;
-                    break;
+                // Check if the system is in a state that requires action.
+                // System state descriptions (from Types.h):
+                //  WaitForCommand: The system is idle and waiting for a command.
+                //  Alarm: In alarm state. Locks out all g-code processes. Allows settings access.
+                //  CheckMode: G-code check mode. Locks out planner and motion only.
+                //  Homing: Performing homing cycle
+                //  Cycle: Cycle is running or motions are being executed.
+                //  Hold: Active feed hold
+                //  Jog: Jogging mode
+                //  SafetyDoor: Safety door is ajar. Feed holds and de-energizes system
+                //  Sleep: Sleep state
+                //  ConfigAlarm: You can't do anything but fix your config file
+                //  Critical: You can't do anything but reset with CTRL-x or the reset button
+                switch (sys.state) {
+                    case State::Idle:
+                    case State::Alarm:
+                    case State::CheckMode:
+                    case State::Homing:
+                    case State::Cycle:
+                    case State::Hold:
+                    case State::SafetyDoor:
+                    case State::Sleep:
+                    case State::ConfigAlarm:
+                    case State::Critical:
+                        // Do nothing.
+                        break;
+
+                    case State::Jog:
+                        _sm.state = eState::Jog;
+                        break;
+
+                    default:
+                        p_log_fatal("Unexpected system state: " << static_cast<size_t>(sys.state));
+                        _sm.state = eState::FatalError;
+                        break;
+                }
             }
             break;
 
@@ -104,23 +127,12 @@ void Maslow::update() {
             }
 
             if (sys.state != State::Jog) {
-                _sm.state = eState::Idle;
-            }
-            break;
-
-        case eState::Report:
-            if ((_sm.state_changed) || (_sm.time_in_state() > 5000)) {
-                _sm.reset_time_in_state();
-
-                // Log Maslow task stack size for debugging
-                UBaseType_t stackHWM_Words = uxTaskGetStackHighWaterMark(maslowTaskHandle);
-                p_log_info("Maslow task stack High Water Mark (HWM): " << stackHWM_Words << " bytes free");
+                _sm.state = eState::WaitForCommand;
             }
             break;
 
         case eState::Test:
             if (_sm.state_changed) {
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->retract();
                 // p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
             }
 
@@ -136,16 +148,12 @@ void Maslow::update() {
             // // if ((_sm.time_in_state() > 750) && (_sm.time_in_state() < 770)) {
             // // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
             // // }
-            if (_belts[static_cast<size_t>(eBelt::TopLeft)]->status() == Belt::BeltStatus::COMPLETED_SUCCESS) {
-                p_log_info("Motor retracted");
-                _sm.state = eState::Idle;
-            }
 
             if (_sm.time_in_state() > 2000) {
                 // Safeguard
                 p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->reset();
-                _sm.state = eState::Report;
+                _belts[static_cast<size_t>(eBelt::TopLeft)]->cmd_reset = true;
+                _sm.state                                              = eState::WaitForCommand;
             }
             break;
 
@@ -154,6 +162,17 @@ void Maslow::update() {
             if (_sm.state_changed) {
                 p_log_fatal("Entered undefined state");
             }
+            break;
+
+        case eState::Reset:
+            if (_sm.state_changed) {
+                // Reset belt errors
+                for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
+                    _belts[i]->cmd_reset = true;
+                }
+            } else
+                // Make sure to have at least one update cycle to allow the components to reset their state.
+                _sm.state = eState::WaitForCommand;
             break;
 
         case eState::FatalError:
@@ -171,24 +190,20 @@ void Maslow::_log_state_change(const std::string& state_name) {
     p_log_info("State changed to " << state_name)
 }
 
-// For testing during development
-void Maslow::test() {
-    _sm.state = eState::Test;
-}
-
-void Maslow::reset() {
-    // Reset belt errors
-    for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
-        _belts[i]->reset();
-    }
-}
-
 void Maslow::group(Configuration::HandlerBase& handler) {
-    handler.item("cycle_time", cycle_time, 1, 100);
-
+    // Components
     handler.section("i2c_switch", _i2c_switch);
-
     for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
         handler.section(BELT_NAMES[i], _belts[i]);
     }
+
+    // Configuration
+    handler.item("cycle_time", cycle_time);
+
+    // Reporting
+    handler.item("report_HWM", report_HWM);
+
+    // Commands
+    handler.item("cmd_reset", cmd_reset);
+    handler.item("cmd_test", cmd_test);
 }

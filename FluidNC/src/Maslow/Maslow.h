@@ -20,6 +20,13 @@ public:
     // Configuration
     uint8_t cycle_time = 10;  // [ms] Maslow task cycle time
 
+    // Reporting
+    bool report_HWM = false;  // Report high water mark of the task stack
+
+    // Commands
+    bool cmd_reset = false;
+    bool cmd_test  = false;  // Test command for debugging
+
     // Components
     I2CSwitch* _i2c_switch = nullptr;  // I2C switch for the encoders
 
@@ -30,14 +37,12 @@ public:
     bool init();    // Called once to perform initialization logic
     void update();  // Called periodically to perform state machine logic
 
-    void test();
-    void reset();
-
 private:
     // State machine
-    enum class eState : uint16_t { Undefined, Entrypoint, Idle, Jog, Report, Test, FatalError, _ENUM_SIZE };
-    const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = { "Undefined", "Entrypoint", "Idle",      "Jog",
-                                                                                            "Report",    "Test",       "FatalError" };
+    enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Jog, Test, Reset, FatalError, _ENUM_SIZE };
+    const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = { "Undefined", "Entrypoint", "WaitForCommand",
+                                                                                            "Jog",       "Test",       "Reset",
+                                                                                            "FatalError" };
     StateMachine<eState>                                                   _sm;
 
     CycleStats           _cycle_stats { 5000 };  // Analyse cycle times every 2 seconds
