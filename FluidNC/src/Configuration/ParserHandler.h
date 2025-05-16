@@ -169,9 +169,17 @@ namespace Configuration {
 
     private:
         std::string buildCurrentPath() {
+            // Ignore first section (e.g, "machine")
             std::stringstream ss;
+            bool              first = true;
             for (const char* part : _path) {
-                ss << '/' << part;
+                if (first) {
+                    first = false;
+                    continue;
+                }
+                if (part != nullptr) {
+                    ss << '/' << part;
+                }
             }
             return ss.str();
         }
