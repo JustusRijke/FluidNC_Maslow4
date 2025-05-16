@@ -82,6 +82,7 @@ maslow:
     retract_speed: 0.6
     retract_current: 0.5
     max_direction_errors: 1
+    max_movement_errors: 10
     encoder:
       port: 2
       mm_per_revolution: 44.0
@@ -100,6 +101,7 @@ maslow:
     retract_speed: 0.6
     retract_current: 0.5
     max_direction_errors: 1
+    max_movement_errors: 10
     encoder:
       port: 1
       mm_per_revolution: 44.0
@@ -118,6 +120,7 @@ maslow:
     retract_speed: 0.6
     retract_current: 0.5
     max_direction_errors: 1
+    max_movement_errors: 10
     encoder:
       port: 3
       mm_per_revolution: 44.0
@@ -136,6 +139,7 @@ maslow:
     retract_speed: 0.6
     retract_current: 0.5
     max_direction_errors: 1
+    max_movement_errors: 10
     encoder:
       port: 0
       mm_per_revolution: 44.0

@@ -39,15 +39,13 @@ void Belt::update() {
     _prev_position = _encoder->get_position();
     _encoder->update();
 
-    if (_max_direction_errors > 0) {
-        // Check if direction of encoder and motor match up.
-        // If not, configuration or hardware could be wrong,
-        // e.g., floating pin issue on Maslow PCB 4.0.
+    float encoder_velocity = _encoder->get_velocity();
+    float motor_speed      = _motor->get_speed();
 
-        //TODO: check if encoder is moving at all (only after motor has been moving for a while)
-        //TODO: what if direction of motor changes suddenly (inertia)
-        float encoder_velocity = _encoder->get_velocity();
-        float motor_speed      = _motor->get_speed();
+    // Check if direction of encoder and motor match up.
+    // If not, configuration or hardware could be wrong,
+    // e.g., floating pin issue on Maslow PCB 4.0.
+    if (_max_direction_errors > 0) {
         if (((encoder_velocity > 1.0f) && motor_speed < 0.0f) || ((encoder_velocity < -1.0f) && motor_speed > 0.0f)) {
             _direction_errors++;
             if (_direction_errors > _max_direction_errors) {
@@ -59,6 +57,29 @@ void Belt::update() {
             // Motor stopped or direction OK, reset counter
             _direction_errors = 0;
         }
+    }
+
+    // Check if belt is moving when motor is active
+    if (_max_movement_errors > 0) {
+        if (fabs(encoder_velocity) < 0.1f && fabs(motor_speed) > 0.1f) {
+            _movement_errors++;
+            if (_movement_errors > _max_movement_errors) {
+                p_log_error("Motor is active, but no movement detected from the belt");
+                _movement_errors = 0;  // Avoid re-triggering the error
+                _sm.state        = eState::Error;
+            }
+        } else {
+            // Belt movement detected, reset counter
+            _movement_errors = 0;
+        }
+    }
+
+    // Reporting
+    if (report_status) {
+        p_log_info("State=" << static_cast<uint16_t>(_sm.state) << ", P=" << _encoder->get_position()
+                            << "mm, V=" << _encoder->get_velocity() << "mm/s, "
+                            << "Motor speed=" << _motor->get_speed() * 100 << "%, I=" << _motor->get_current() << "A");
+        report_status = false;
     }
 
     _sm.update();
@@ -89,6 +110,7 @@ void Belt::update() {
             if (_sm.state_changed) {
                 _motor->set_speed(-_retract_speed);
             }
+
             if (_motor->overcurrent_error) {
                 // If the motor is in overcurrent error, stop the motor
                 _motor->stop();
@@ -107,18 +129,18 @@ void Belt::update() {
             if (_sm.state_changed) {
                 _motor->set_speed(_extend_speed);
             }
+
             if (_motor->overcurrent_error) {
                 // If the motor is in overcurrent error, stop the motor
                 _motor->stop();
                 p_log_error("Motor overcurrent error");
                 _sm.state = eState::Error;
             } else if (_sm.time_in_state() == 500) {
-                p_log_info("Vel=" << _encoder->get_velocity() << " mm/s");
-            } else if (_sm.time_in_state() > 1000) {
+                report_status = true;
+            } else if (_sm.time_in_state() > 5000) {
                 _motor->stop();
                 _sm.state = eState::WaitForCommand;
             }
-            // TODO: timeout for retracting?
             break;
 
         case eState::Reset:
@@ -131,8 +153,7 @@ void Belt::update() {
             // Only way to get out of this state is a reset command
             if (_sm.state_changed) {
                 _motor->stop();
-            }
-            if (cmd_reset)
+            } else if (cmd_reset)
                 _sm.state = eState::Reset;
             break;
 
@@ -157,8 +178,12 @@ void Belt::group(Configuration::HandlerBase& handler) {
     // Configuration
     handler.item("retract_speed", _retract_speed, 0.01f, 1.0f);
     handler.item("retract_current", _retract_current, 0.01f, 100.0f);
-    handler.item("_extend_speed", _extend_speed, 0.01f, 1.0f);
+    handler.item("extend_speed", _extend_speed, 0.01f, 1.0f);
     handler.item("max_direction_errors", _max_direction_errors, 0, 100);
+    handler.item("max_movement_errors", _max_movement_errors, 0, 1000);
+
+    // Reports
+    handler.item("report_status", report_status);
 
     // Commands
     handler.item("cmd_retract", cmd_retract);
