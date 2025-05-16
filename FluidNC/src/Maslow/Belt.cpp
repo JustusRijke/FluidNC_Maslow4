@@ -23,7 +23,7 @@ bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
     if (!_encoder->init(i2c_switch, cycle_time))
         return false;
 
-    if (!_motor->init())
+    if (!_motor->init(cycle_time))
         return false;
 
     _sm.ms_per_cycle = cycle_time;
@@ -74,6 +74,22 @@ void Belt::update() {
         }
     }
 
+    // Log motor overcurrent warning
+    if (_motor->overcurrent_warning) {
+        unsigned long now = millis();
+        // Avoid spamming the log
+        if (now - _timestamp_last_warning > WARNING_INTERVAL) {
+            p_log_warn("Motor overcurrent warning");
+            _timestamp_last_warning = now;
+        }
+    }
+
+    // Handle motor overcurrent error
+    if (_motor->overcurrent_error) {
+        p_log_error("Motor overcurrent error");
+        _sm.state = eState::Error;
+    }
+
     // Reporting
     if (report_status) {
         p_log_info("State=" << static_cast<uint16_t>(_sm.state) << ", P=" << _encoder->get_position()
@@ -82,6 +98,7 @@ void Belt::update() {
         report_status = false;
     }
 
+    // State machine
     _sm.update();
 
     switch (_sm.state) {
@@ -111,13 +128,8 @@ void Belt::update() {
                 _motor->set_speed(-_retract_speed);
             }
 
-            if (_motor->overcurrent_error) {
-                // If the motor is in overcurrent error, stop the motor
-                _motor->stop();
-                p_log_error("Motor overcurrent error");
-                _sm.state = eState::Error;
-            } else if (_motor->get_current() > _retract_current) {
-                // If the motor current exceeds the threshold, stop the motor
+            // If the motor current exceeds the threshold, stop the motor
+            if (_motor->get_current() > _retract_current) {
                 _motor->stop();
                 _encoder->set_position(0.0f);
                 _sm.state = eState::WaitForCommand;
@@ -130,12 +142,7 @@ void Belt::update() {
                 _motor->set_speed(_extend_speed);
             }
 
-            if (_motor->overcurrent_error) {
-                // If the motor is in overcurrent error, stop the motor
-                _motor->stop();
-                p_log_error("Motor overcurrent error");
-                _sm.state = eState::Error;
-            } else if (_sm.time_in_state() == 500) {
+            if (_sm.time_in_state() == 500) {
                 report_status = true;
             } else if (_sm.time_in_state() > 5000) {
                 _motor->stop();

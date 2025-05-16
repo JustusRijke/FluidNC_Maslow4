@@ -3,7 +3,9 @@
 #include <Arduino.h>
 #include <algorithm>
 
-bool HBridgeMotor::init() {
+bool HBridgeMotor::init(uint8_t cycle_time) {
+    _cycle_time = cycle_time;
+
     if (!_fwd_pin.defined() || !_rev_pin.defined() || !_current_sense_pin.defined()) {
         p_log_config_error("Missing pin configurations");
         return false;
@@ -45,8 +47,23 @@ void HBridgeMotor::update() {
     float sample = (float)analogReadMilliVolts(_current_sense_pin.index()) / _current_sense_resistor;
     _current     = _rolling_average_current.update(sample);
 
-    overcurrent_error   = (_current >= _overcurrent_error_threshold);
-    overcurrent_warning = (_current >= _overcurrent_warning_threshold);
+    // Keep track of the time the motor is active
+    if (fabs(_speed) > std::numeric_limits<float>::epsilon()) {
+        _time_active += _cycle_time;
+    } else {
+        // Reset the time active counter
+        _time_active = 0;
+    }
+
+    // Check for overcurrent conditions
+    if ((_overcurrent_suppress_time > 0) && (_time_active > _overcurrent_suppress_time)) {
+        overcurrent_error   = (_current >= _overcurrent_error_threshold);
+        overcurrent_warning = (_current >= _overcurrent_warning_threshold);
+
+    } else {
+        overcurrent_warning = false;
+        overcurrent_error   = false;
+    }
 }
 
 // Speed: -1.0 (full reverse) to 1.0 (full forward). 0.0 is stop.
@@ -87,5 +104,6 @@ void HBridgeMotor::group(Configuration::HandlerBase& handler) {
     handler.item("current_sense_resistor", _current_sense_resistor, 1, 100000);
     handler.item("overcurrent_warning", _overcurrent_warning_threshold, 0.1f, 100.0f);
     handler.item("overcurrent_error", _overcurrent_error_threshold, 0.1f, 100.0f);
+    handler.item("overcurrent_suppress_time", _overcurrent_suppress_time, 0, 10000);
     handler.item("reverse", _reverse);
 }

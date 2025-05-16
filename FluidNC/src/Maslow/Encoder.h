@@ -41,7 +41,7 @@ private:
     int32_t _revolutions_prev  = 0;     // Position of the rotation meter at the last update
     float _revolutions_to_mm = 0.0f;  // helper variable to avoid division in get_position()
 
-    uint8_t _cycle_time = 0;  // Time in ms per call to update(), used to determine velocity
+    uint8_t _cycle_time = 0;  // [ms] Time between calls to update(), used to determine velocity
 
     // Configuration handlers
     void group(Configuration::HandlerBase& handler) override;

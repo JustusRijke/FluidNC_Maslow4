@@ -44,6 +44,9 @@ private:
     uint16_t _direction_errors = 0;     // Number of direction errors detected
     uint16_t _movement_errors  = 0;     // Number of motion detection errors detected
 
+    unsigned long             _timestamp_last_warning = 0;    // Last warning time (to avoid spamming the log)
+    constexpr static uint32_t WARNING_INTERVAL        = 500;  // [ms] Interval for showing warnings
+
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;
 };
