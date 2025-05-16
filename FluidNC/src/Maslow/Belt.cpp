@@ -20,7 +20,7 @@ bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
     }
 
     // Initialize the encoder with the I2C switch (dependency injection)
-    if (!_encoder->init(i2c_switch))
+    if (!_encoder->init(i2c_switch, cycle_time))
         return false;
 
     if (!_motor->init())
@@ -45,11 +45,10 @@ void Belt::update() {
         // e.g., floating pin issue on Maslow PCB 4.0.
 
         //TODO: check if encoder is moving at all (only after motor has been moving for a while)
-        //TODO: Add "velocity" readback on encoder class
         //TODO: what if direction of motor changes suddenly (inertia)
-        bool  extending = (_prev_position < _encoder->get_position());
-        float speed     = _motor->get_speed();
-        if ((extending && speed < 0.0f) || (!extending && speed > 0.0f)) {
+        float encoder_velocity = _encoder->get_velocity();
+        float motor_speed      = _motor->get_speed();
+        if (((encoder_velocity > 1.0f) && motor_speed < 0.0f) || ((encoder_velocity < -1.0f) && motor_speed > 0.0f)) {
             _direction_errors++;
             if (_direction_errors > _max_direction_errors) {
                 p_log_error("Encoder and motor direction mismatch");
@@ -73,30 +72,50 @@ void Belt::update() {
         case eState::WaitForCommand:
             if (_sm.state_changed) {
                 // Reset all commands
-                cmd_retract = false;
                 cmd_reset   = false;
+                cmd_retract = false;
+                cmd_extend  = false;
             }
             // Handle all commands in order of priority.
             if (cmd_reset)
                 _sm.state = eState::Reset;
             else if (cmd_retract)
                 _sm.state = eState::Retract;
+            else if (cmd_extend)
+                _sm.state = eState::Extend;
             break;
 
         case eState::Retract:
             if (_sm.state_changed) {
-                _motor->set_speed(-_retract_speed);  // Set motor speed to retract
+                _motor->set_speed(-_retract_speed);
             }
             if (_motor->overcurrent_error) {
                 // If the motor is in overcurrent error, stop the motor
                 _motor->stop();
                 p_log_error("Motor overcurrent error");
                 _sm.state = eState::Error;
-            }
-            if (_motor->get_current() > _retract_current) {
+            } else if (_motor->get_current() > _retract_current) {
                 // If the motor current exceeds the threshold, stop the motor
                 _motor->stop();
                 _encoder->set_position(0.0f);
+                _sm.state = eState::WaitForCommand;
+            }
+            // TODO: timeout for retracting?
+            break;
+
+        case eState::Extend:
+            if (_sm.state_changed) {
+                _motor->set_speed(_extend_speed);
+            }
+            if (_motor->overcurrent_error) {
+                // If the motor is in overcurrent error, stop the motor
+                _motor->stop();
+                p_log_error("Motor overcurrent error");
+                _sm.state = eState::Error;
+            } else if (_sm.time_in_state() == 500) {
+                p_log_info("Vel=" << _encoder->get_velocity() << " mm/s");
+            } else if (_sm.time_in_state() > 1000) {
+                _motor->stop();
                 _sm.state = eState::WaitForCommand;
             }
             // TODO: timeout for retracting?
@@ -109,10 +128,12 @@ void Belt::update() {
             break;
 
         case eState::Error:
-            // Only way to get out of this state is calling reset()
+            // Only way to get out of this state is a reset command
             if (_sm.state_changed) {
                 _motor->stop();
             }
+            if (cmd_reset)
+                _sm.state = eState::Reset;
             break;
 
         case eState::Undefined:
@@ -136,8 +157,11 @@ void Belt::group(Configuration::HandlerBase& handler) {
     // Configuration
     handler.item("retract_speed", _retract_speed, 0.01f, 1.0f);
     handler.item("retract_current", _retract_current, 0.01f, 100.0f);
+    handler.item("_extend_speed", _extend_speed, 0.01f, 1.0f);
     handler.item("max_direction_errors", _max_direction_errors, 0, 100);
 
     // Commands
     handler.item("cmd_retract", cmd_retract);
+    handler.item("cmd_extend", cmd_extend);
+    handler.item("cmd_reset", cmd_reset);
 }

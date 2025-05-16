@@ -81,10 +81,11 @@ maslow:
   tl:
     retract_speed: 0.6
     retract_current: 0.5
-    max_direction_errors: 0
+    max_direction_errors: 1
     encoder:
       port: 2
       mm_per_revolution: 44.0
+      invert: true
     motor:
       fwd_pin: gpio.45
       rev_pin: gpio.21
@@ -98,10 +99,11 @@ maslow:
   tr:
     retract_speed: 0.6
     retract_current: 0.5
-    max_direction_errors: 0
+    max_direction_errors: 1
     encoder:
       port: 1
       mm_per_revolution: 44.0
+      invert: true
     motor:
       fwd_pin: gpio.42
       rev_pin: gpio.41
@@ -115,10 +117,11 @@ maslow:
   bl:
     retract_speed: 0.6
     retract_current: 0.5
-    max_direction_errors: 0
+    max_direction_errors: 1
     encoder:
       port: 3
       mm_per_revolution: 44.0
+      invert: true
     motor:
       fwd_pin: gpio.37
       rev_pin: gpio.36
@@ -132,10 +135,11 @@ maslow:
   br:
     retract_speed: 0.6
     retract_current: 0.5
-    max_direction_errors: 0
+    max_direction_errors: 1
     encoder:
       port: 0
       mm_per_revolution: 44.0
+      invert: true
     motor:
       fwd_pin: gpio.9
       rev_pin: gpio.3

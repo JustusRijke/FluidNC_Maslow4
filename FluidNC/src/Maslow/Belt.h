@@ -18,6 +18,7 @@ public:
 
     // Commands
     bool cmd_retract = false;
+    bool cmd_extend  = false;
     bool cmd_reset   = false;
 
 private:
@@ -27,10 +28,11 @@ private:
 
     // Configuration
     float    _retract_speed        = 0.6f;  // [0.0-1.0] Speed for retracting the belt
+    float    _extend_speed         = 1.0f;  // [0.0-1.0] Speed for retracting the belt
     float    _retract_current      = 0.5f;  // [A] Current threshold for retracting the belt
-    uint32_t _max_direction_errors = 0;     // Maximum number of direction errors before stopping the motor. 0 to disable check.
+    uint32_t _max_direction_errors = 1;     // Maximum number of direction errors before stopping the motor. 0 to disable check.
 
-    enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Retract, Reset, Error, _ENUM_SIZE };
+    enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Retract, Extend, Reset, Error, _ENUM_SIZE };
     StateMachine<eState> _sm;
 
     float    _prev_position    = 0.0f;  // Previous position of the encoder
