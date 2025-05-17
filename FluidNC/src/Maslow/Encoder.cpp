@@ -32,7 +32,7 @@ bool Encoder::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
 
     set_mm_per_revolution(_mm_per_revolution);
 
-    p_log_info("Initialized (port:" << _port << ", raw angle:" << _rotation_meter.rawAngle() << ")");
+    p_log_debug("Initialized (port:" << _port << ", raw angle:" << _rotation_meter.rawAngle() << ")");
     return true;
 }
 

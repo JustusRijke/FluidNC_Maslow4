@@ -19,12 +19,12 @@ public:
 
     void set_speed(float speed);
     float get_speed();
-    void stop() { set_speed(0); };
+    void  stop(bool coast = false);
 
     float get_current();
 
     // Status flags
-    // Caller is responsible for taking action (e.g. stop motor)
+    // IMPORTANT: Caller is responsible for taking action (e.g. stop motor)
     bool overcurrent_warning = false;
     bool overcurrent_error   = false;
 
@@ -35,22 +35,22 @@ private:
     uint32_t _frequency = 4000;  // Hz
     Pin      _current_sense_pin;
     uint32_t _current_sense_resistor        = 1500;  // Ohm
-    float    _overcurrent_warning_threshold = 0.7;   // Amperes
-    float    _overcurrent_error_threshold   = 1.0;   // Amperes
-    // [ms] Time to delay overcurrent warnings/errors after motor start. 0 = disable overcurrent detection.
-    uint32_t _overcurrent_suppress_time     = 500;
+    float    _overcurrent_warning_threshold = 0.9;   // Amperes
+    float    _overcurrent_error_threshold   = 1.4;   // Amperes
     bool     _reverse                       = false;  // Reverse motor direction
 
-    static constexpr float FLOAT_NEAR_ZERO = 0.01f;  // Filter near-zero float values
+    static constexpr float FLOAT_NEAR_ZERO = std::numeric_limits<float>::epsilon();  // Filter near-zero float values
 
     uint32_t _max_duty = 0;
-    float    _speed    = 0.0f;
-    float    _current  = 0.0f;
-    uint32_t _time_active = 0;  // [ms] Time the motor is active (used to suppress overcurrent warnings/errors)
+    float    _speed_act = 0.0f;  // Calculated actual speed
+    float    _speed_set = 0.0f;  // Target speed setpoint
+    float    _current   = 0.0f;
 
     uint8_t _cycle_time = 0;  // [ms] Time between calls to update()
 
-    RollingAverage<20> _rolling_average_current;  // 20 samples x 10ms cycles = 200ms rolling average filter for current measurement
+    RollingAverage<50> _rolling_average_current;  // 50 samples x 10ms cycles = 500ms rolling average filter for current measurement
+
+    void update_pwm_outputs();  // Update PWM outputs based on the calculated actual speed
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;
