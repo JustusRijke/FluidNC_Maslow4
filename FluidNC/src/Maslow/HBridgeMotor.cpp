@@ -6,7 +6,7 @@
 bool HBridgeMotor::init(uint8_t cycle_time) {
     _cycle_time = cycle_time;
 
-    if (!_fwd_pin.defined() || !_rev_pin.defined() || !_current_sense_pin.defined()) {
+    if (_fwd_pin.undefined() || _rev_pin.undefined() || _current_sense_pin.undefined()) {
         p_log_config_error("Missing pin configurations");
         return false;
     }
@@ -43,8 +43,9 @@ void HBridgeMotor::update() {
     // Convert IPROPI voltage (V) to motor current (I_OUT in Amperes)
     // Read the IPROPI pin voltage directly in millivolts (ESP32 specific)
     // Note: ESP32 ADCs are non-linear, the return value will be an estimate.
+    // The x1.6 factor is emperical (based on actual measurements)
     // Store the rolling average to filter out noise.
-    float sample = (float)analogReadMilliVolts(_current_sense_pin.index()) / _current_sense_resistor;
+    float sample = (float)analogReadMilliVolts(_current_sense_pin.index()) * 1.6f / _current_sense_resistor;
     _current     = _rolling_average_current.update(sample);
 
     // Check for overcurrent conditions
