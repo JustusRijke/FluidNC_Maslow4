@@ -38,6 +38,7 @@ private:
     // Components
     Belt*      _belts[NUMBER_OF_BELTS] = { nullptr, nullptr, nullptr, nullptr };
     I2CSwitch* _i2c_switch             = nullptr;  // I2C switch for the belt encoders
+    Pin        _fan_pin;
 
     // State machine
     enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Jog, Test, Reset, FatalError, _ENUM_SIZE };

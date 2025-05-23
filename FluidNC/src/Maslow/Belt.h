@@ -24,6 +24,8 @@ public:
     bool cmd_extend  = false;  // Extend the belt
     bool cmd_reset   = false;  // Reset belt errors
 
+    bool request_fan = false;  // Request to turn on the fan for cooling the motor
+
 private:
     // Components
     Encoder*      _encoder = nullptr;
@@ -60,7 +62,9 @@ private:
     bool _homed = false;  // False if the position of the belt is unclear (never retracted, after power cycle, etc.)
 
     unsigned long             _timestamp_last_warning = 0;    // Last warning time (to avoid spamming the log)
-    constexpr static uint32_t WARNING_INTERVAL        = 500;  // [ms] Interval for showing warnings
+    constexpr static uint32_t WARNING_INTERVAL        = 400;  // [ms] Interval for showing warnings
+
+    static constexpr float FLOAT_NEAR_ZERO = std::numeric_limits<float>::epsilon();  // Filter near-zero float values
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

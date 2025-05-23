@@ -36,7 +36,13 @@ bool Maslow::init() {
         }
     }
 
-    p_log_info("Initialized.");
+    if (_fan_pin.undefined()) {
+        p_log_config_error("Missing fan pin configuration");
+        return false;
+    } else
+        _fan_pin.setAttr(Pin::Attr::Output);
+
+    p_log_debug("Initialized.");
     return true;
 }
 
@@ -45,9 +51,14 @@ void Maslow::update() {
     // Cycle time measurement
     _cycle_stats.track_cycles(cycle_time * 1250);  // Warn when cycle time is exceeded by 25%
 
+    // Activate fan if any belt requests it
+    // TODO: check if Z axis is active
+    bool activate_fan = false;
     for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
         _belts[i]->update();
+        activate_fan |= _belts[i]->request_fan;
     }
+    _fan_pin.synchronousWrite(activate_fan);
 
     // Reporting
     if (report_HWM) {
@@ -196,6 +207,7 @@ void Maslow::group(Configuration::HandlerBase& handler) {
     for (size_t i = 0; i < NUMBER_OF_BELTS; ++i) {
         handler.section(BELT_NAMES[i], _belts[i]);
     }
+    handler.item("fan_pin", _fan_pin);
 
     // Configuration
     handler.item("cycle_time", cycle_time);

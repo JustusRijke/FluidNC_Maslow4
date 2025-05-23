@@ -235,6 +235,8 @@ void Belt::update() {
             _sm.state = eState::Undefined;
             break;
     }
+
+    request_fan = (fabs(_motor->get_speed()) > FLOAT_NEAR_ZERO);
 }
 
 void Belt::group(Configuration::HandlerBase& handler) {

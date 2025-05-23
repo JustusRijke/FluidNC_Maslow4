@@ -26,9 +26,6 @@ kinematics:
   Cartesian:
 
 axes:
-  # The stepper disable pin is low when motors are moving; invert it to control the PCB fan.
-  shared_stepper_disable_pin: gpio.47:low
-
   z:
     steps_per_mm: 100
     max_rate_mm_per_min: 400
@@ -69,6 +66,8 @@ maslow:
   # This is the minimum time between each cycle, but the actual time may be longer if 
   # the loop takes longer to execute, in which case an warning is issued.
   cycle_time: 10
+
+  fan_pin: gpio.47
 
   # I2C switch for the belt encoders
   i2c_switch:
