@@ -23,7 +23,15 @@ uart1:
   rxd_pin: gpio.2
   
 kinematics:
-  Cartesian:
+  QuadCable:
+    # Anchor distances (mm)
+    d_bl_tl: 300.0
+    d_bl_br: 400.0
+    d_br_tr: 300.0
+    d_tl_tr: 400.0
+    d_bl_tr: 500.0
+    # Diagonal BR-TL is used for validation
+    d_br_tl: 500.0
 
 axes:
   z:
