@@ -52,39 +52,39 @@ void HBridgeMotor::update() {
     overcurrent_error   = (_current >= _overcurrent_error_threshold);
     overcurrent_warning = (_current >= _overcurrent_warning_threshold);
 
-    // Adjust speed until it reaches the setpoint
+    // Adjust torque until it reaches the setpoint
     // Ramp up slowly, ramp down immediately
-    if (fabs(_speed_set - _speed_act) > FLOAT_NEAR_ZERO) {
-        if (_speed_act * _speed_set < 0) {  // Changing direction: brake to zero
-            _speed_act = 0.0f;
-        } else if (fabs(_speed_set) < fabs(_speed_act)) {
-            // Brake/reduce speed
-            _speed_act = _speed_set;
+    if (fabs(_torque_set - _torque_act) > FLOAT_NEAR_ZERO) {
+        if (_torque_act * _torque_set < 0) {  // Changing direction: brake to zero
+            _torque_act = 0.0f;
+        } else if (fabs(_torque_set) < fabs(_torque_act)) {
+            // Brake/reduce torque
+            _torque_act = _torque_set;
         } else {
-            // Ramp up speed
+            // Ramp up torque
             const float STEP =
                 0.1f;  // 0.01 sec (cycletime) / 0.1 step = 0.1s to 100% TODO: make this configurable, taking cycle time into account
-            float       delta = _speed_set - _speed_act;
-            _speed_act += std::copysign(std::min(fabs(delta), STEP), delta);
+            float delta = _torque_set - _torque_act;
+            _torque_act += std::copysign(std::min(fabs(delta), STEP), delta);
         }
         update_pwm_outputs();
     } else  // Reached the setpoint
-        _speed_act = _speed_set;
+        _torque_act = _torque_set;
 }
 
-// Speed: -1.0 (full reverse) to 1.0 (full forward). 0.0 is stop.
-void HBridgeMotor::set_speed(float speed) {
-    _speed_set = std::clamp(speed, -1.0f, 1.0f);
+// Torque: -1.0 (full reverse) to 1.0 (full forward). 0.0 is stop.
+void HBridgeMotor::set_torque(float torque) {
+    _torque_set = std::clamp(torque, -1.0f, 1.0f);
 }
 
-// Return the actual speed (-1.0...1.0)
-float HBridgeMotor::get_speed() {
-    return _speed_act;
+// Return the actual torque (-1.0...1.0)
+float HBridgeMotor::get_torque() {
+    return _torque_act;
 }
 
 void HBridgeMotor::stop(bool coast) {
-    _speed_act = 0.0f;
-    _speed_set = 0.0f;
+    _torque_act = 0.0f;
+    _torque_set = 0.0f;
     if (coast) {
         _fwd_pin.setDuty(0);
         _rev_pin.setDuty(0);
@@ -95,14 +95,14 @@ void HBridgeMotor::stop(bool coast) {
 };
 
 void HBridgeMotor::update_pwm_outputs() {
-    // Set the duty cycle based on the speed
-    uint32_t duty = static_cast<uint32_t>(abs(_speed_act) * _max_duty);
+    // Set the duty cycle based on the torque
+    uint32_t duty = static_cast<uint32_t>(abs(_torque_act) * _max_duty);
 
-    float directed_speed = _reverse ? -_speed_act : _speed_act;
-    if (directed_speed < -FLOAT_NEAR_ZERO) {
+    float directed_torque = _reverse ? -_torque_act : _torque_act;
+    if (directed_torque < -FLOAT_NEAR_ZERO) {
         _rev_pin.setDuty(duty);
         _fwd_pin.setDuty(0);
-    } else if (directed_speed > FLOAT_NEAR_ZERO) {
+    } else if (directed_torque > FLOAT_NEAR_ZERO) {
         _fwd_pin.setDuty(duty);
         _rev_pin.setDuty(0);
     } else {  // NaN or near zero: brake

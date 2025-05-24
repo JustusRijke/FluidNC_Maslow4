@@ -17,8 +17,8 @@ public:
     bool init(uint8_t cycle_time);
     void update();
 
-    void set_speed(float speed);
-    float get_speed();
+    void  set_torque(float torque);
+    float get_torque();
     void  stop(bool coast = false);
 
     float get_current();
@@ -42,15 +42,15 @@ private:
     static constexpr float FLOAT_NEAR_ZERO = std::numeric_limits<float>::epsilon();  // Filter near-zero float values
 
     uint32_t _max_duty = 0;
-    float    _speed_act = 0.0f;  // Calculated actual speed
-    float    _speed_set = 0.0f;  // Target speed setpoint
+    float    _torque_act = 0.0f;  // Calculated actual torque
+    float    _torque_set = 0.0f;  // Target torque setpoint
     float    _current   = 0.0f;
 
     uint8_t _cycle_time = 0;  // [ms] Time between calls to update()
 
     RollingAverage<50> _rolling_average_current;  // 50 samples x 10ms cycles = 500ms rolling average filter for current measurement
 
-    void update_pwm_outputs();  // Update PWM outputs based on the calculated actual speed
+    void update_pwm_outputs();  // Update PWM outputs based on the calculated actual torque
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

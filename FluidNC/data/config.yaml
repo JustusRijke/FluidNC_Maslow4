@@ -86,7 +86,7 @@ maslow:
 
   # Belts
   tl:
-    retract_speed: 1.0
+    retract_torque: 1.0
     retract_current: 0.6
     max_direction_errors: 10
     max_movement_errors: 50
@@ -105,7 +105,7 @@ maslow:
       reverse: true
 
   tr:
-    retract_speed: 1.0
+    retract_torque: 1.0
     retract_current: 0.6
     max_direction_errors: 10
     max_movement_errors: 50
@@ -124,7 +124,7 @@ maslow:
       reverse: true
 
   bl:
-    retract_speed: 1.0
+    retract_torque: 1.0
     retract_current: 0.6
     max_direction_errors: 10
     max_movement_errors: 50
@@ -143,7 +143,7 @@ maslow:
       reverse: true
 
   br:
-    retract_speed: 1.0
+    retract_torque: 1.0
     retract_current: 0.6
     max_direction_errors: 10
     max_movement_errors: 50

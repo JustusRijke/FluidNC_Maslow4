@@ -38,9 +38,9 @@ void Belt::update() {
     _motor->update();
     _encoder->update();
 
-    float position         = _encoder->get_position();
+    _position              = _encoder->get_position();
     float encoder_velocity = _encoder->get_velocity();
-    float motor_speed      = _motor->get_speed();
+    float motor_torque     = _motor->get_torque();
 
     bool _errors_during_extend = false;
 
@@ -48,7 +48,7 @@ void Belt::update() {
     // If not, configuration or hardware could be wrong,
     // e.g., floating pin issue on Maslow PCB 4.0.
     if (_max_direction_errors > 0) {
-        if (((encoder_velocity > 1.0f) && motor_speed < 0.0f) || ((encoder_velocity < -1.0f) && motor_speed > 0.0f)) {
+        if (((encoder_velocity > 1.0f) && motor_torque < 0.0f) || ((encoder_velocity < -1.0f) && motor_torque > 0.0f)) {
             _direction_errors++;
             if (_direction_errors > _max_direction_errors) {
                 if ((_sm.state == eState::StartExtend) || (_sm.state == eState::Extending)) {
@@ -69,7 +69,7 @@ void Belt::update() {
 
     // Check if belt is moving when motor is active
     if (_max_movement_errors > 0) {
-        if (fabs(encoder_velocity) < 0.1f && fabs(motor_speed) > 0.1f) {
+        if (fabs(encoder_velocity) < 0.1f && fabs(motor_torque) > 0.1f) {  // TODO: use minimum motor torque, e.g. 0.3f
             _movement_errors++;
             if (_movement_errors > _max_movement_errors) {
                 if ((_sm.state == eState::StartExtend) || (_sm.state == eState::Extending)) {
@@ -106,8 +106,9 @@ void Belt::update() {
 
     // Reporting
     if (report_status) {
-        p_log_info("State=" << static_cast<uint16_t>(_sm.state) << ", P=" << position << "mm, V=" << encoder_velocity << "mm/s, "
-                            << "Motor speed=" << motor_speed * 100 << "%, I=" << _motor->get_current() << "A");
+        p_log_info("State=" << static_cast<uint16_t>(_sm.state) << ", V=" << encoder_velocity << "mm/s, T=" << motor_torque * 100
+                            << "%, I=" << _motor->get_current() << "A, Ptarget=" << target_pos << "mm, Pact=" << _position
+                            << "mm, lag=" << fabs(target_pos - _position) << "mm");
         report_status = false;
     }
 
@@ -129,18 +130,21 @@ void Belt::update() {
                 // Reset all commands except cmd_reset
                 cmd_retract = false;
                 cmd_extend  = false;
+                cmd_move_to_target = false;
             }
             // Handle all commands in order of priority.
             if (cmd_retract)
                 _sm.state = eState::Retract;
             else if (cmd_extend)
                 _sm.state = eState::StartExtend;
+            else if (cmd_move_to_target)
+                _sm.state = eState::MoveToTarget;
 
             break;
 
         case eState::Retract:
             if (_sm.state_changed) {
-                _motor->set_speed(-_retract_speed);
+                _motor->set_torque(-_retract_torque);
             }
 
             // If the motor current exceeds the threshold, stop the motor
@@ -165,15 +169,15 @@ void Belt::update() {
                     _sm.state = eState::WaitForCommand;
                 } else
                     // Extend the belt a little bit (to get it unstuck from its retracted position)
-                    _motor->set_speed(_extend_speed);
+                    _motor->set_torque(_extend_torque);
             }
 
-            if (position >= _extend_length) {
+            if (_position >= _extend_length) {
                 // If the belt is extended enough, stop the procedure
                 _motor->stop();
                 _sm.state = eState::WaitForCommand;
             } else if (_sm.time_in_state() > 500) {
-                _last_position = position;
+                _last_position = _position;
                 _sm.state      = eState::Extending;
             }
 
@@ -182,17 +186,17 @@ void Belt::update() {
         case eState::Extending:
             // Extend the belt as lang as the encoder is reporting movement,
             // pause on errors (which will occurr when the user is not pulling the belt)
-            if (position >= _extend_length) {
+            if (_position >= _extend_length) {
                 // If the belt is extended enough, stop the procedure
                 _motor->stop();
                 _sm.state = eState::WaitForCommand;
             } else if (_errors_during_extend) {
                 // Error detected, pause for a bit
                 _sm.state = eState::PauseExtend;
-            } else if (position > _last_position) {
+            } else if (_position > _last_position) {
                 // Encoder is reporting movement, keep extending the belt
-                _last_position = position;
-                _motor->set_speed(_extend_speed);
+                _last_position = _position;
+                _motor->set_torque(_extend_torque);
             } else {
                 _motor->stop();
             }
@@ -206,8 +210,25 @@ void Belt::update() {
             }
             if (_sm.time_in_state() > 1000) {
                 _motor->stop(true);         // Coast, so belt can be pulled out
-                _last_position = position;  // If not, lot of force is required to move the belt past the last known position
+                _last_position = _position;  // If not, lot of force is required to move the belt past the last known position
                 _sm.state = eState::Extending;
+            }
+            break;
+
+        case eState::MoveToTarget:
+            // Move the belt to the target position while cmd_move_to_target is true.
+            if (!cmd_move_to_target) {
+                _motor->stop();
+                _sm.state = eState::WaitForCommand;
+            } else if (fabs(target_pos - _position) > _hysteresis) {
+                // Target position not yet reached, calculate and set motor torque using gain (= P in a PID controller)
+                float torque = _gain * (target_pos - _position);
+                // Ensure minimum effective torque while preserving sign
+                torque = std::copysign(std::max(std::fabs(torque), _minimum_torque), torque);
+                _motor->set_torque(torque);
+            } else if (fabs(motor_torque) > FLOAT_NEAR_ZERO) {
+                // Target position is reached, stop the motor (if moving)
+                _motor->stop();
             }
             break;
 
@@ -236,7 +257,11 @@ void Belt::update() {
             break;
     }
 
-    request_fan = (fabs(_motor->get_speed()) > FLOAT_NEAR_ZERO);
+    request_fan = (fabs(_motor->get_torque()) > FLOAT_NEAR_ZERO);
+}
+
+float Belt::get_position() {
+    return _position;
 }
 
 void Belt::group(Configuration::HandlerBase& handler) {
@@ -245,11 +270,14 @@ void Belt::group(Configuration::HandlerBase& handler) {
     handler.section("motor", _motor);
 
     // Configuration
-    handler.item("retract_speed", _retract_speed, 0.01f, 1.0f);
+    handler.item("retract_torque", _retract_torque, 0.01f, 1.0f);
     handler.item("retract_current", _retract_current, 0.01f, 100.0f);
-    handler.item("extend_speed", _extend_speed, 0.01f, 1.0f);
+    handler.item("minimum_torque", _minimum_torque, 0.0f, 1.0f);
+    handler.item("extend_torque", _extend_torque, 0.01f, 1.0f);
     handler.item("max_direction_errors", _max_direction_errors, 0, 100);
     handler.item("max_movement_errors", _max_movement_errors, 0, 1000);
+    handler.item("gain", _gain, 0.001f, 1000.0f);
+    handler.item("target_pos", target_pos, 0.0f, 10000.0f);
 
     // Reports
     handler.item("report_status", report_status);
@@ -258,4 +286,5 @@ void Belt::group(Configuration::HandlerBase& handler) {
     handler.item("cmd_retract", cmd_retract);
     handler.item("cmd_extend", cmd_extend);
     handler.item("cmd_reset", cmd_reset);
+    handler.item("cmd_move_to_target", cmd_move_to_target);
 }

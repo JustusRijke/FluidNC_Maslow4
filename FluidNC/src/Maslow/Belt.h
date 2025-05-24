@@ -15,6 +15,7 @@ public:
 
     bool init(I2CSwitch* i2c_switch, uint8_t cycle_time);
     void update();
+    float get_position();
 
     // Reporting
     bool report_status = false;  // General status report
@@ -22,7 +23,10 @@ public:
     // Commands
     bool cmd_retract = false;  // Retract the belt and set position to zero (home)
     bool cmd_extend  = false;  // Extend the belt
-    bool cmd_reset   = false;  // Reset belt errors
+    bool cmd_reset   = false;  // Reset to initial state (stop motor, reset errors, etc.)
+
+    bool  cmd_move_to_target = false;  // Move to target position
+    float target_pos         = 0.0f;  // [mm] Target position to move the belt to. TODO: remove from configuration, only used during testing
 
     bool request_fan = false;  // Request to turn on the fan for cooling the motor
 
@@ -32,12 +36,15 @@ private:
     HBridgeMotor* _motor   = nullptr;
 
     // Configuration
-    float    _retract_speed        = 1.0f;  // [0.0-1.0] Speed for retracting the belt
-    float    _extend_speed         = 1.0f;  // [0.0-1.0] Speed for retracting the belt
+    float    _retract_torque       = 1.0f;  // [0.0-1.0] Torque for retracting the belt
+    float    _extend_torque        = 1.0f;  // [0.0-1.0] Torque for retracting the belt
+    float    _minimum_torque       = 0.3f;  // [0.0-1.0] Minimum torque for belt to move
     float    _retract_current      = 0.6f;  // [A] Current threshold for retracting the belt
     uint32_t _max_direction_errors = 10;    // Max direction errors allowed before stopping the motor. 0 disables the check.
     // Max movement errors allowed before stopping the motor. 0 disables the check. Higher values give the motor more time to move the belt.
     uint32_t _max_movement_errors = 50;
+    float    _gain                = 0.1f;  // Gain (P of a PID) for the motor torque control (output=P*(setpoint-current_value)
+    float    _hysteresis          = 0.1f;  // [mm] Target reached if the position is within this range.
 
     enum class eState : uint16_t {
         Undefined,
@@ -47,6 +54,7 @@ private:
         StartExtend,
         Extending,
         PauseExtend,
+        MoveToTarget,
         Reset,
         Error,
         _ENUM_SIZE
@@ -57,6 +65,7 @@ private:
     uint16_t _movement_errors  = 0;     // Number of motion detection errors detected
 
     float _extend_length = 1000.0f;  // [mm] Distance to extend the belt
+    float _position      = 0.0f;     // Current position of the belt
     float _last_position = 0.0f;     // Last position of the belt
 
     bool _homed = false;  // False if the position of the belt is unclear (never retracted, after power cycle, etc.)

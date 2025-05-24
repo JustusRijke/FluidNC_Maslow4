@@ -131,16 +131,24 @@ void Maslow::update() {
             }
             break;
 
-        case eState::Jog:
+        case eState::Jog: {
+            Belt* belt = _belts[static_cast<size_t>(eBelt::BottomRight)];
+            // Belt* belt = _belts[static_cast<size_t>(eBelt::TopLeft)];
+
             if ((_sm.state_changed) || (_sm.time_in_state() > 500)) {
                 _sm.reset_time_in_state();
-                p_log_info("Target mpos x: " << steps_to_mpos(get_axis_motor_steps(X_AXIS), X_AXIS));
+                belt->report_status      = true;
+                belt->cmd_move_to_target = true;
             }
 
+            belt->target_pos = get_mpos()[X_AXIS];
+
             if (sys.state != State::Jog) {
+                belt->cmd_move_to_target = false;
                 _sm.state = eState::WaitForCommand;
             }
             break;
+        }
 
         case eState::Test:
             if (_sm.state_changed) {
@@ -153,7 +161,7 @@ void Maslow::update() {
 
             // if ((_sm.time_in_state() > 1000) && (_sm.time_in_state() < 1010)) {
             //     // p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
-            //     _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_speed(0.8f);
+            //     _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_torque(0.8f);
             // }
 
             // // if ((_sm.time_in_state() > 750) && (_sm.time_in_state() < 770)) {
