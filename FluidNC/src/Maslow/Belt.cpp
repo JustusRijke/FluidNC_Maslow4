@@ -29,6 +29,8 @@ bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
     _sm.ms_per_cycle = cycle_time;
     _sm.state        = eState::Entrypoint;
 
+    _PID.SetMode(QuickPID::Control::automatic);
+
     p_log_info("Initialized.");
     return true;
 }
@@ -69,7 +71,7 @@ void Belt::update() {
 
     // Check if belt is moving when motor is active
     if (_max_movement_errors > 0) {
-        if (fabs(encoder_velocity) < 0.1f && fabs(motor_torque) > 0.1f) {  // TODO: use minimum motor torque, e.g. 0.3f
+        if (fabs(encoder_velocity) < 0.1f && fabs(motor_torque) > _minimum_torque) {
             _movement_errors++;
             if (_movement_errors > _max_movement_errors) {
                 if ((_sm.state == eState::StartExtend) || (_sm.state == eState::Extending)) {
@@ -216,16 +218,25 @@ void Belt::update() {
             break;
 
         case eState::MoveToTarget:
+            // Update the PID controller
+            if (_sm.state_changed) {
+                _PID.SetTunings(_Kp, _Ki, _Kd);
+                // "Clamp" limits, to avoid motor torque deadband
+                _PID.SetOutputLimits(-1.0f + _minimum_torque, 1.0f - _minimum_torque);
+                _PID.Reset();
+            }
+            _PID.Compute();
+
             // Move the belt to the target position while cmd_move_to_target is true.
             if (!cmd_move_to_target) {
                 _motor->stop();
                 _sm.state = eState::WaitForCommand;
             } else if (fabs(target_pos - _position) > _hysteresis) {
-                // Target position not yet reached, calculate and set motor torque using gain (= P in a PID controller)
-                float torque = _gain * (target_pos - _position);
-                // Ensure minimum effective torque while preserving sign
-                torque = std::copysign(std::max(std::fabs(torque), _minimum_torque), torque);
-                _motor->set_torque(torque);
+                // Target position not yet reached, move motor using (minimum) computed torque
+                if (_pid_output < FLOAT_NEAR_ZERO)
+                    _motor->set_torque(_pid_output - _minimum_torque);
+                else
+                    _motor->set_torque(_pid_output + _minimum_torque);
             } else if (fabs(motor_torque) > FLOAT_NEAR_ZERO) {
                 // Target position is reached, stop the motor (if moving)
                 _motor->stop();
@@ -276,8 +287,10 @@ void Belt::group(Configuration::HandlerBase& handler) {
     handler.item("extend_torque", _extend_torque, 0.01f, 1.0f);
     handler.item("max_direction_errors", _max_direction_errors, 0, 100);
     handler.item("max_movement_errors", _max_movement_errors, 0, 1000);
-    handler.item("gain", _gain, 0.001f, 1000.0f);
     handler.item("target_pos", target_pos, 0.0f, 10000.0f);
+    handler.item("Kp", _Kp, 0.001f, 100.0f);
+    handler.item("Ki", _Ki, 0.0f, 100.0f);
+    handler.item("Kd", _Kd, 0.0f, 100.0f);
 
     // Reports
     handler.item("report_status", report_status);

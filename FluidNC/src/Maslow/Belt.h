@@ -8,6 +8,7 @@
 #include "Encoder.h"
 #include "HBridgeMotor.h"
 #include "utils/StateMachine.hpp"
+#include <QuickPID.h>
 
 class Belt : public Configuration::Configurable {
 public:
@@ -43,8 +44,10 @@ private:
     uint32_t _max_direction_errors = 10;    // Max direction errors allowed before stopping the motor. 0 disables the check.
     // Max movement errors allowed before stopping the motor. 0 disables the check. Higher values give the motor more time to move the belt.
     uint32_t _max_movement_errors = 50;
-    float    _gain                = 0.1f;  // Gain (P of a PID) for the motor torque control (output=P*(setpoint-current_value)
     float    _hysteresis          = 0.1f;  // [mm] Target reached if the position is within this range.
+    float    _Kp                  = 0.020f;  // Proportional gain: Error response gain
+    float    _Ki                  = 0.000f;  // Integral: Eliminates steady-state error
+    float    _Kd                  = 0.001f;  // Derative gain: Damps oscillations/overshoot
 
     enum class eState : uint16_t {
         Undefined,
@@ -67,8 +70,11 @@ private:
     float _extend_length = 1000.0f;  // [mm] Distance to extend the belt
     float _position      = 0.0f;     // Current position of the belt
     float _last_position = 0.0f;     // Last position of the belt
-
     bool _homed = false;  // False if the position of the belt is unclear (never retracted, after power cycle, etc.)
+
+    // PID controller
+    float    _pid_output;
+    QuickPID _PID = QuickPID(&_position, &_pid_output, &target_pos);
 
     unsigned long             _timestamp_last_warning = 0;    // Last warning time (to avoid spamming the log)
     constexpr static uint32_t WARNING_INTERVAL        = 400;  // [ms] Interval for showing warnings
