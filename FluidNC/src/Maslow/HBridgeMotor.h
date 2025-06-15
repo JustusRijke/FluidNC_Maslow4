@@ -17,8 +17,8 @@ public:
     bool init(uint8_t cycle_time);
     void update();
 
-    void  set_torque(float torque);
-    float get_torque();
+    void  set_duty(float duty);
+    float get_duty();
     void  stop(bool coast = false);
     bool  stopped();
 
@@ -42,10 +42,11 @@ private:
 
     static constexpr float FLOAT_NEAR_ZERO = std::numeric_limits<float>::epsilon();  // Filter near-zero float values
 
-    uint32_t _max_duty = 0;
-    float    _torque_act = 0.0f;  // Calculated actual torque
-    float    _torque_set = 0.0f;  // Target torque setpoint
-    float    _current    = 0.0f;
+    uint32_t _max_pin_duty = 0;  // Maximum duty cycle value accepted by the pin
+
+    float _duty_act = 0.0f;  // [0.0-1.0] Calculated actual PWM duty cycle
+    float _duty_set = 0.0f;  // [0.0-1.0] Target PWM duty cycle setpoint
+    float _current  = 0.0f;  // [A] Current measured by the current sense pin
 
     bool _stopped = true;
 
@@ -53,7 +54,7 @@ private:
 
     RollingAverage<50> _rolling_average_current;  // 50 samples x 10ms cycles = 500ms rolling average filter for current measurement
 
-    void update_pwm_outputs();  // Update PWM outputs based on the calculated actual torque
+    void update_pwm_outputs();
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

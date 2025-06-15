@@ -68,6 +68,17 @@ void Maslow::update() {
         report_HWM = false;
     }
 
+    if (report_status) {
+        p_log_info("State=" << _state_names[static_cast<uint16_t>(_sm.state)]);
+        report_status = false;
+    }
+
+    // Reset command - always wins
+    if (cmd_reset) {
+        _sm.state = eState::Reset;
+        cmd_reset = false;
+    }
+
     // Update the state machine, so we can check state changes and time spent in state.
     _sm.update();
 
@@ -78,61 +89,46 @@ void Maslow::update() {
             break;
 
         case eState::WaitForCommand:
-            if (_sm.state_changed) {
-                // Reset all commands
-                cmd_reset = false;
-                cmd_test  = false;
-            }
+            // Check if the system is in a state that requires action.
+            // System state descriptions (from Types.h):
+            //  WaitForCommand: The system is idle and waiting for a command.
+            //  Alarm: In alarm state. Locks out all g-code processes. Allows settings access.
+            //  CheckMode: G-code check mode. Locks out planner and motion only.
+            //  Homing: Performing homing cycle
+            //  Cycle: Cycle is running or motions are being executed.
+            //  Hold: Active feed hold
+            //  Jog: Jogging mode
+            //  SafetyDoor: Safety door is ajar. Feed holds and de-energizes system
+            //  Sleep: Sleep state
+            //  ConfigAlarm: You can't do anything but fix your config file
+            //  Critical: You can't do anything but reset with CTRL-x or the reset button
+            switch (sys.state) {
+                case State::Idle:
+                case State::Alarm:
+                case State::CheckMode:
+                case State::Homing:
+                case State::Cycle:
+                case State::Hold:
+                case State::SafetyDoor:
+                case State::Sleep:
+                case State::ConfigAlarm:
+                case State::Critical:
+                    // Do nothing.
+                    break;
 
-            // Handle all commands in order of priority.
-            if (cmd_reset)
-                _sm.state = eState::Reset;
-            else if (cmd_test)
-                _sm.state = eState::Test;
-            else {
-                // No command given -> wait for system state changes.
+                case State::Jog:
+                    _sm.state = eState::Jog;
+                    break;
 
-                // Check if the system is in a state that requires action.
-                // System state descriptions (from Types.h):
-                //  WaitForCommand: The system is idle and waiting for a command.
-                //  Alarm: In alarm state. Locks out all g-code processes. Allows settings access.
-                //  CheckMode: G-code check mode. Locks out planner and motion only.
-                //  Homing: Performing homing cycle
-                //  Cycle: Cycle is running or motions are being executed.
-                //  Hold: Active feed hold
-                //  Jog: Jogging mode
-                //  SafetyDoor: Safety door is ajar. Feed holds and de-energizes system
-                //  Sleep: Sleep state
-                //  ConfigAlarm: You can't do anything but fix your config file
-                //  Critical: You can't do anything but reset with CTRL-x or the reset button
-                switch (sys.state) {
-                    case State::Idle:
-                    case State::Alarm:
-                    case State::CheckMode:
-                    case State::Homing:
-                    case State::Cycle:
-                    case State::Hold:
-                    case State::SafetyDoor:
-                    case State::Sleep:
-                    case State::ConfigAlarm:
-                    case State::Critical:
-                        // Do nothing.
-                        break;
-
-                    case State::Jog:
-                        _sm.state = eState::Jog;
-                        break;
-
-                    default:
-                        p_log_fatal("Unexpected system state: " << static_cast<size_t>(sys.state));
-                        _sm.state = eState::FatalError;
-                        break;
-                }
+                default:
+                    p_log_fatal("Unexpected system state: " << static_cast<size_t>(sys.state));
+                    _sm.state = eState::FatalError;
+                    break;
             }
             break;
 
         case eState::Jog: {
-            Belt* belt = _belts[static_cast<size_t>(eBelt::BottomRight)];
+            Belt* belt = _belts[static_cast<size_t>(eBelt::BottomLeft)];
             // Belt* belt = _belts[static_cast<size_t>(eBelt::TopLeft)];
 
             if ((_sm.state_changed) || (_sm.time_in_state() > 500)) {
@@ -150,32 +146,6 @@ void Maslow::update() {
             break;
         }
 
-        case eState::Test:
-            if (_sm.state_changed) {
-                // p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
-            }
-
-            // if ((_sm.time_in_state() > 250) && (_sm.time_in_state() < 260)) {
-            //     // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
-            // }
-
-            // if ((_sm.time_in_state() > 1000) && (_sm.time_in_state() < 1010)) {
-            //     // p_log_info("P=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_encoder->get_position_mm(44.0f));
-            //     _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->set_torque(0.8f);
-            // }
-
-            // // if ((_sm.time_in_state() > 750) && (_sm.time_in_state() < 770)) {
-            // // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
-            // // }
-
-            if (_sm.time_in_state() > 2000) {
-                // Safeguard
-                // p_log_info("A=" << _belts[static_cast<size_t>(eBelt::TopLeft)]->_motor->get_current());
-                _belts[static_cast<size_t>(eBelt::TopLeft)]->cmd_reset = true;
-                _sm.state                                              = eState::WaitForCommand;
-            }
-            break;
-
         case eState::Undefined:
             // Oops, we should never end up here. Fatal programming error.
             if (_sm.state_changed) {
@@ -190,7 +160,7 @@ void Maslow::update() {
                     _belts[i]->cmd_reset = true;
                 }
             } else
-                // Make sure to have at least one update cycle to allow the components to reset their state.
+                // Make sure to have at least one update cycle to allow belts to reset
                 _sm.state = eState::WaitForCommand;
             break;
 
@@ -206,7 +176,8 @@ void Maslow::update() {
 
 // Log state changes (called by StateMachine)
 void Maslow::_log_state_change(const std::string& state_name) {
-    p_log_info("State changed to " << state_name)
+    if (_sm.state != eState::FatalError)  // So we won't miss out on the fatal error message itself
+        p_log_info("State changed to " << state_name)
 }
 
 void Maslow::group(Configuration::HandlerBase& handler) {
@@ -221,9 +192,9 @@ void Maslow::group(Configuration::HandlerBase& handler) {
     handler.item("cycle_time", cycle_time);
 
     // Reporting
+    handler.item("report_status", report_status);
     handler.item("report_HWM", report_HWM);
 
     // Commands
     handler.item("cmd_reset", cmd_reset);
-    handler.item("cmd_test", cmd_test);
 }

@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 bool I2CSwitch::init() {
-    if (!_sda_pin.defined() || !_scl_pin.defined()) {
+    if (_sda_pin.undefined() || _scl_pin.undefined()) {
         p_log_config_error("Pins not defined");
         return false;
     }
@@ -22,8 +22,8 @@ bool I2CSwitch::init() {
         return false;
     }
 
-    p_log_info("Initialized (" << _scl_pin.name() << " (SCL), " << _sda_pin.name() << " (SDA), " << _frequency << "Hz, address "
-                               << to_hex(_address) << ").");
+    p_log_debug("Initialized (" << _scl_pin.name() << " (SCL), " << _sda_pin.name() << " (SDA), " << _frequency << "Hz, address "
+                                << to_hex(_address) << ").");
     return true;
 }
 

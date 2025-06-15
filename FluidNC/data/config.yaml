@@ -86,10 +86,10 @@ maslow:
 
   # Belts
   tl:
-    retract_torque: 1.0
-    retract_current: 0.6
-    max_direction_errors: 10
-    max_movement_errors: 50
+    # retract_duty: 1.0
+    # retract_current: 0.6
+    # max_direction_errors: 10
+    # max_movement_errors: 50
     encoder:
       port: 2
       mm_per_revolution: 44.0
@@ -100,15 +100,15 @@ maslow:
       frequency: 4000
       current_sense_pin: gpio.18
       current_sense_resistor: 1500
-      overcurrent_warning: 0.9
-      overcurrent_error: 1.4
+      # overcurrent_warning: 0.9
+      # overcurrent_error: 1.4
       reverse: true
 
   tr:
-    retract_torque: 1.0
-    retract_current: 0.6
-    max_direction_errors: 10
-    max_movement_errors: 50
+    # retract_duty: 1.0
+    # retract_current: 0.6
+    # max_direction_errors: 10
+    # max_movement_errors: 50
     encoder:
       port: 1
       mm_per_revolution: 44.0
@@ -119,15 +119,15 @@ maslow:
       frequency: 4000
       current_sense_pin: gpio.6
       current_sense_resistor: 1500
-      overcurrent_warning: 0.9
-      overcurrent_error: 1.4
+      # overcurrent_warning: 0.9
+      # overcurrent_error: 1.4
       reverse: true
 
   bl:
-    retract_torque: 1.0
-    retract_current: 0.6
-    max_direction_errors: 10
-    max_movement_errors: 50
+    # retract_duty: 1.0
+    # retract_current: 0.6
+    # max_direction_errors: 10
+    # max_movement_errors: 50
     encoder:
       port: 3
       mm_per_revolution: 44.0
@@ -138,15 +138,15 @@ maslow:
       frequency: 4000
       current_sense_pin: gpio.8
       current_sense_resistor: 1500
-      overcurrent_warning: 0.9
-      overcurrent_error: 1.4
+      # overcurrent_warning: 0.9
+      # overcurrent_error: 1.4
       reverse: true
 
   br:
-    retract_torque: 1.0
-    retract_current: 0.6
-    max_direction_errors: 10
-    max_movement_errors: 50
+    # retract_duty: 1.0
+    # retract_current: 0.6
+    # max_direction_errors: 10
+    # max_movement_errors: 50
     encoder:
       port: 0
       mm_per_revolution: 44.0
@@ -157,6 +157,6 @@ maslow:
       frequency: 4000
       current_sense_pin: gpio.7
       current_sense_resistor: 1500
-      overcurrent_warning: 0.9
-      overcurrent_error: 1.4
+      # overcurrent_warning: 0.9
+      # overcurrent_error: 1.4
       reverse: true

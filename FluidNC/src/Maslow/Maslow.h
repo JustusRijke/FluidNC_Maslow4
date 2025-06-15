@@ -24,11 +24,11 @@ public:
     uint8_t cycle_time = 10;  // [ms] Maslow task cycle time (used by Main.cpp to setup the Maslow task)
 
     // Reporting
+    bool report_status = false;  // General status report
     bool report_HWM = false;  // Report high water mark of the task stack
 
     // Commands
     bool cmd_reset = false;
-    bool cmd_test  = false;  // Test command for debugging
 
 private:
     static constexpr int  NUMBER_OF_BELTS                = 4;
@@ -41,10 +41,9 @@ private:
     Pin        _fan_pin;
 
     // State machine
-    enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Jog, Test, Reset, FatalError, _ENUM_SIZE };
+    enum class eState : uint16_t { Undefined, Entrypoint, WaitForCommand, Jog, Reset, FatalError, _ENUM_SIZE };
     const std::array<std::string, static_cast<size_t>(eState::_ENUM_SIZE)> _state_names = { "Undefined", "Entrypoint", "WaitForCommand",
-                                                                                            "Jog",       "Test",       "Reset",
-                                                                                            "FatalError" };
+                                                                                            "Jog",       "Reset",      "FatalError" };
     StateMachine<eState>                                                   _sm;
 
     CycleStats           _cycle_stats { 5000 };  // Analyse cycle times every 2 seconds

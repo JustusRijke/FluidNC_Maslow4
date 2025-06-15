@@ -37,13 +37,15 @@ private:
     HBridgeMotor* _motor   = nullptr;
 
     // Configuration
-    float    _retract_torque       = 1.0f;  // [0.0-1.0] Torque for retracting the belt
-    float    _extend_torque        = 1.0f;  // [0.0-1.0] Torque for retracting the belt
-    float    _minimum_torque       = 0.3f;  // [0.0-1.0] Minimum torque for belt to move
-    float    _retract_current      = 0.6f;  // [A] Current threshold for retracting the belt
+    float _retract_duty    = 1.0f;  // [0.0-1.0] PWM duty cycle for retracting the belt
+    float _extend_duty     = 1.0f;  // [0.0-1.0] PWM duty cycle for retracting the belt
+    float _minimum_duty    = 0.3f;  // [0.0-1.0] Minimum PWM duty cycle for belt to move (dead zone)
+    float _retract_current = 0.9f;  // [A] Current threshold for retracting the belt
+
     uint32_t _max_direction_errors = 10;    // Max direction errors allowed before stopping the motor. 0 disables the check.
-    // Max movement errors allowed before stopping the motor. 0 disables the check. Higher values give the motor more time to move the belt.
-    uint32_t _max_movement_errors = 50;
+    uint32_t _max_stall_errors     = 20;    // Max stall errors allowed before stopping the motor. 0 disables the check.
+    float    _min_stall_duty       = 0.6f;  // Minimum PWM duty cycle to consider the belt moving during stall detection
+
     float    _hysteresis          = 0.1f;  // [mm] Target reached if the position is within this range.
     float    _Kp                  = 0.020f;  // Proportional gain: Error response gain
     float    _Ki                  = 0.000f;  // Integral: Eliminates steady-state error
@@ -64,8 +66,10 @@ private:
     };
     StateMachine<eState> _sm;
 
-    uint16_t _direction_errors = 0;     // Number of direction errors detected
-    uint16_t _movement_errors  = 0;     // Number of motion detection errors detected
+    uint16_t               _direction_errors = 0;      // Number of direction errors detected
+    constexpr static float DIR_ERROR_MIN_VEL = 10.0f;  // [mm/s] Min. velocity to consider the belt moving
+    uint16_t               _stall_errors     = 0;      // Number of stall errors detected
+    constexpr static float MOV_ERROR_MIN_VEL = 0.01f;  // [mm/s] Min. velocity to consider the belt stalled
 
     float _extend_length = 1000.0f;  // [mm] Distance to extend the belt
     float _position      = 0.0f;     // Current position of the belt
@@ -78,8 +82,6 @@ private:
 
     unsigned long             _timestamp_last_warning = 0;    // Last warning time (to avoid spamming the log)
     constexpr static uint32_t WARNING_INTERVAL        = 400;  // [ms] Interval for showing warnings
-
-    static constexpr float FLOAT_NEAR_ZERO = std::numeric_limits<float>::epsilon();  // Filter near-zero float values
 
     // Configuration handler
     void group(Configuration::HandlerBase& handler) override;

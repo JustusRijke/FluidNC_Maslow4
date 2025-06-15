@@ -30,6 +30,7 @@ bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
     _sm.state        = eState::Entrypoint;
 
     _PID.SetMode(QuickPID::Control::automatic);
+    // _PID.SetAntiWindupMode(QuickPID::iAwMode::iAwClamp);
 
     p_log_info("Initialized.");
     return true;
@@ -39,10 +40,11 @@ bool Belt::init(I2CSwitch* i2c_switch, uint8_t cycle_time) {
 void Belt::update() {
     _motor->update();
     _encoder->update();
+    _PID.Compute();
 
     _position              = _encoder->get_position();
     float encoder_velocity = _encoder->get_velocity();
-    float motor_torque     = _motor->get_torque();
+    float motor_duty       = _motor->get_duty();
 
     bool _errors_during_extend = false;
 
@@ -50,7 +52,8 @@ void Belt::update() {
     // If not, configuration or hardware could be wrong,
     // e.g., floating pin issue on Maslow PCB 4.0.
     if (_max_direction_errors > 0) {
-        if (((encoder_velocity > 1.0f) && motor_torque < 0.0f) || ((encoder_velocity < -1.0f) && motor_torque > 0.0f)) {
+        if (((encoder_velocity > DIR_ERROR_MIN_VEL) && motor_duty < -_minimum_duty) ||
+            ((encoder_velocity < -DIR_ERROR_MIN_VEL) && motor_duty > _minimum_duty)) {
             _direction_errors++;
             if (_direction_errors > _max_direction_errors) {
                 if ((_sm.state == eState::StartExtend) || (_sm.state == eState::Extending)) {
@@ -69,11 +72,11 @@ void Belt::update() {
         }
     }
 
-    // Check if belt is moving when motor is active
-    if (_max_movement_errors > 0) {
-        if (fabs(encoder_velocity) < 0.1f && fabs(motor_torque) > _minimum_torque) {
-            _movement_errors++;
-            if (_movement_errors > _max_movement_errors) {
+    // Check if belt is stalled
+    if (_max_stall_errors > 0) {
+        if ((fabs(encoder_velocity) < MOV_ERROR_MIN_VEL) && (fabs(motor_duty) > _min_stall_duty)) {
+            _stall_errors++;
+            if (_stall_errors > _max_stall_errors) {
                 if ((_sm.state == eState::StartExtend) || (_sm.state == eState::Extending)) {
                     // Suppress the error when we are extending the belt
                     p_log_warn("Motor is active, but belt is not moving");
@@ -82,11 +85,11 @@ void Belt::update() {
                     p_log_error("Motor is active, but belt is not moving");
                     _sm.state = eState::Error;
                 }
-                _movement_errors = 0;  // Avoid re-triggering the error
+                _stall_errors = 0;  // Avoid re-triggering the error
             }
         } else {
             // Belt movement detected, reset counter
-            _movement_errors = 0;
+            _stall_errors = 0;
         }
     }
 
@@ -108,9 +111,9 @@ void Belt::update() {
 
     // Reporting
     if (report_status) {
-        p_log_info("State=" << static_cast<uint16_t>(_sm.state) << ", V=" << encoder_velocity << "mm/s, T=" << motor_torque * 100
+        p_log_info("State=" << static_cast<uint16_t>(_sm.state) << ", V=" << encoder_velocity << "mm/s, T=" << motor_duty * 100
                             << "%, I=" << _motor->get_current() << "A, Ptarget=" << target_pos << "mm, Pact=" << _position
-                            << "mm, lag=" << fabs(target_pos - _position) << "mm");
+                            << "mm, lag=" << target_pos - _position << "mm");
         report_status = false;
     }
 
@@ -146,17 +149,20 @@ void Belt::update() {
 
         case eState::Retract:
             if (_sm.state_changed) {
-                _motor->set_torque(-_retract_torque);
+                _motor->set_duty(-_retract_duty);
             }
 
             // If the motor current exceeds the threshold, stop the motor
             if (_motor->get_current() > _retract_current) {
                 _motor->stop();
+                _sm.reset_time_in_state();  // Reset time in state, so we can wait for the motor to stop
+            }
+
+            if (_motor->stopped() && (_sm.time_in_state() > 500)) {
                 _encoder->set_position(0.0f);
                 _homed    = true;
                 _sm.state = eState::WaitForCommand;
             }
-            // TODO: timeout for retracting?
             break;
 
         case eState::StartExtend:
@@ -171,7 +177,7 @@ void Belt::update() {
                     _sm.state = eState::WaitForCommand;
                 } else
                     // Extend the belt a little bit (to get it unstuck from its retracted position)
-                    _motor->set_torque(_extend_torque);
+                    _motor->set_duty(_extend_duty);
             }
 
             if (_position >= _extend_length) {
@@ -198,7 +204,7 @@ void Belt::update() {
             } else if (_position > _last_position) {
                 // Encoder is reporting movement, keep extending the belt
                 _last_position = _position;
-                _motor->set_torque(_extend_torque);
+                _motor->set_duty(_extend_duty);
             } else {
                 _motor->stop();
             }
@@ -218,28 +224,29 @@ void Belt::update() {
             break;
 
         case eState::MoveToTarget:
-            // Update the PID controller
             if (_sm.state_changed) {
-                _PID.SetTunings(_Kp, _Ki, _Kd);
-                // "Clamp" limits, to avoid motor torque deadband
-                _PID.SetOutputLimits(-1.0f + _minimum_torque, 1.0f - _minimum_torque);
-                _PID.Reset();
-            }
-            _PID.Compute();
-
-            // Move the belt to the target position while cmd_move_to_target is true.
-            if (!cmd_move_to_target) {
+                // TODO: uncomment this code before release
+                // if (!_homed) {
+                //     p_log_warn("Belt position unknown, retract first");
+                //     _sm.state = eState::WaitForCommand;
+                // } else
+                {
+                    // Restart the PID controller
+                    _PID.SetTunings(_Kp, _Ki, _Kd);
+                    // "Clamp" limits, to avoid motor dead zone
+                    _PID.SetOutputLimits(-1.0f + _minimum_duty, 1.0f - _minimum_duty);
+                    _PID.Reset();
+                }
+            } else if (!cmd_move_to_target) {
+                // We're done
                 _motor->stop();
                 _sm.state = eState::WaitForCommand;
-            } else if (fabs(target_pos - _position) > _hysteresis) {
-                // Target position not yet reached, move motor using (minimum) computed torque
-                if (_pid_output < FLOAT_NEAR_ZERO)
-                    _motor->set_torque(_pid_output - _minimum_torque);
+            } else {
+                // Drive the motor. Apply minimum PWM duty cycle to PID output
+                if (_pid_output < 0.0f)
+                    _motor->set_duty(_pid_output - _minimum_duty);
                 else
-                    _motor->set_torque(_pid_output + _minimum_torque);
-            } else if (fabs(motor_torque) > FLOAT_NEAR_ZERO) {
-                // Target position is reached, stop the motor (if moving)
-                _motor->stop();
+                    _motor->set_duty(_pid_output + _minimum_duty);
             }
             break;
 
@@ -268,7 +275,7 @@ void Belt::update() {
             break;
     }
 
-    request_fan = (fabs(_motor->get_torque()) > FLOAT_NEAR_ZERO);
+    request_fan = (!_motor->stopped());
 }
 
 float Belt::get_position() {
@@ -281,12 +288,13 @@ void Belt::group(Configuration::HandlerBase& handler) {
     handler.section("motor", _motor);
 
     // Configuration
-    handler.item("retract_torque", _retract_torque, 0.01f, 1.0f);
+    handler.item("retract_duty", _retract_duty, 0.01f, 1.0f);
     handler.item("retract_current", _retract_current, 0.01f, 100.0f);
-    handler.item("minimum_torque", _minimum_torque, 0.0f, 1.0f);
-    handler.item("extend_torque", _extend_torque, 0.01f, 1.0f);
+    handler.item("minimum_duty", _minimum_duty, 0.0f, 1.0f);
+    handler.item("extend_duty", _extend_duty, 0.01f, 1.0f);
     handler.item("max_direction_errors", _max_direction_errors, 0, 100);
-    handler.item("max_movement_errors", _max_movement_errors, 0, 1000);
+    handler.item("max_stall_errors", _max_stall_errors, 0, 1000);
+    handler.item("min_stall_duty", _min_stall_duty, 0.01f, 1.0f);
     handler.item("target_pos", target_pos, 0.0f, 10000.0f);
     handler.item("Kp", _Kp, 0.001f, 100.0f);
     handler.item("Ki", _Ki, 0.0f, 100.0f);

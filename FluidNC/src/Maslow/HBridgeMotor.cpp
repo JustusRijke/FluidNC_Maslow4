@@ -30,7 +30,7 @@ bool HBridgeMotor::init(uint8_t cycle_time) {
         return false;
     }
 
-    _max_duty = _fwd_pin.maxDuty();
+    _max_pin_duty = _fwd_pin.maxDuty();
 
     p_log_debug("Initialized (FWD/IN1:" << _fwd_pin.name() << ", REV/IN2:" << _rev_pin.name() << ", IPROPI:" << _current_sense_pin.name()
                                         << ")");
@@ -52,45 +52,45 @@ void HBridgeMotor::update() {
     overcurrent_error   = (_current >= _overcurrent_error_threshold);
     overcurrent_warning = (_current >= _overcurrent_warning_threshold);
 
-    // Adjust torque until it reaches the setpoint
+    // Adjust PWM duty cycle until it reaches the setpoint
     // Ramp up slowly, ramp down immediately
-    if (fabs(_torque_set - _torque_act) > FLOAT_NEAR_ZERO) {
-        if (_torque_act * _torque_set < 0) {  // Changing direction: brake to zero
-            _torque_act = 0.0f;
-        } else if (fabs(_torque_set) < fabs(_torque_act)) {
-            // Brake/reduce torque
-            _torque_act = _torque_set;
+    if (fabs(_duty_set - _duty_act) > FLOAT_NEAR_ZERO) {
+        if (_duty_act * _duty_set < 0) {  // Changing direction: brake to zero
+            _duty_act = 0.0f;
+        } else if (fabs(_duty_set) < fabs(_duty_act)) {
+            // Brake/reduce duty cycle
+            _duty_act = _duty_set;
         } else {
-            // Ramp up torque
+            // Ramp up duty cycle
             const float STEP =
-                0.1f;  // 0.01 sec (cycletime) / 0.1 step = 0.1s to 100% TODO: make this configurable, taking cycle time into account
-            float delta = _torque_set - _torque_act;
-            _torque_act += std::copysign(std::min(fabs(delta), STEP), delta);
+                0.1f;  // 0.01 sec (cycle time) / 0.1 step = 0.1s to 100% TODO: make this configurable, taking cycle time into account
+            float delta = _duty_set - _duty_act;
+            _duty_act += std::copysign(std::min(fabs(delta), STEP), delta);
         }
         update_pwm_outputs();
     } else  // Reached the setpoint
-        _torque_act = _torque_set;
+        _duty_act = _duty_set;
 }
 
 // Torque: -1.0 (full reverse) to 1.0 (full forward). 0.0 is stop.
-void HBridgeMotor::set_torque(float torque) {
-    _torque_set = std::clamp(torque, -1.0f, 1.0f);
+void HBridgeMotor::set_duty(float duty) {
+    _duty_set = std::clamp(duty, -1.0f, 1.0f);
 }
 
-// Return the actual torque (-1.0...1.0)
-float HBridgeMotor::get_torque() {
-    return _torque_act;
+// Return the actual duty (-1.0...1.0)
+float HBridgeMotor::get_duty() {
+    return _duty_act;
 }
 
 void HBridgeMotor::stop(bool coast) {
-    _torque_act = 0.0f;
-    _torque_set = 0.0f;
+    _duty_act = 0.0f;
+    _duty_set = 0.0f;
     if (coast) {
         _fwd_pin.setDuty(0);
         _rev_pin.setDuty(0);
     } else {  // brake
-        _fwd_pin.setDuty(_max_duty);
-        _rev_pin.setDuty(_max_duty);
+        _fwd_pin.setDuty(_max_pin_duty);
+        _rev_pin.setDuty(_max_pin_duty);
     }
     _stopped = true;
 };
@@ -99,23 +99,23 @@ bool HBridgeMotor::stopped() {
     return _stopped;
 }
 
+// Update PWM pin duty cycles based on the calculated (relative) duty
 void HBridgeMotor::update_pwm_outputs() {
-    // Set the duty cycle based on the torque
-    uint32_t duty = static_cast<uint32_t>(abs(_torque_act) * _max_duty);
+    uint32_t duty = static_cast<uint32_t>(abs(_duty_act) * _max_pin_duty);
 
-    float directed_torque = _reverse ? -_torque_act : _torque_act;
-    if (directed_torque < -FLOAT_NEAR_ZERO) {
+    float directed_duty = _reverse ? -_duty_act : _duty_act;
+    if (directed_duty < -FLOAT_NEAR_ZERO) {
         _rev_pin.setDuty(duty);
         _fwd_pin.setDuty(0);
         _stopped = false;
-    } else if (directed_torque > FLOAT_NEAR_ZERO) {
+    } else if (directed_duty > FLOAT_NEAR_ZERO) {
         _fwd_pin.setDuty(duty);
         _rev_pin.setDuty(0);
         _stopped = false;
     } else {  // NaN or near zero: brake
         _stopped = true;
-        _fwd_pin.setDuty(_max_duty);
-        _rev_pin.setDuty(_max_duty);
+        _fwd_pin.setDuty(_max_pin_duty);
+        _rev_pin.setDuty(_max_pin_duty);
     }
 }
 
