@@ -20,6 +20,7 @@ public:
     void  set_torque(float torque);
     float get_torque();
     void  stop(bool coast = false);
+    bool  stopped();
 
     float get_current();
 
@@ -44,7 +45,9 @@ private:
     uint32_t _max_duty = 0;
     float    _torque_act = 0.0f;  // Calculated actual torque
     float    _torque_set = 0.0f;  // Target torque setpoint
-    float    _current   = 0.0f;
+    float    _current    = 0.0f;
+
+    bool _stopped = true;
 
     uint8_t _cycle_time = 0;  // [ms] Time between calls to update()
 

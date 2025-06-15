@@ -92,7 +92,12 @@ void HBridgeMotor::stop(bool coast) {
         _fwd_pin.setDuty(_max_duty);
         _rev_pin.setDuty(_max_duty);
     }
+    _stopped = true;
 };
+
+bool HBridgeMotor::stopped() {
+    return _stopped;
+}
 
 void HBridgeMotor::update_pwm_outputs() {
     // Set the duty cycle based on the torque
@@ -102,10 +107,13 @@ void HBridgeMotor::update_pwm_outputs() {
     if (directed_torque < -FLOAT_NEAR_ZERO) {
         _rev_pin.setDuty(duty);
         _fwd_pin.setDuty(0);
+        _stopped = false;
     } else if (directed_torque > FLOAT_NEAR_ZERO) {
         _fwd_pin.setDuty(duty);
         _rev_pin.setDuty(0);
+        _stopped = false;
     } else {  // NaN or near zero: brake
+        _stopped = true;
         _fwd_pin.setDuty(_max_duty);
         _rev_pin.setDuty(_max_duty);
     }
