@@ -3,7 +3,7 @@
 namespace Pins {
     PinCapabilities GPIOPinDetail::GetDefaultCapabilities(pinnum_t index) {
 #ifdef CONFIG_IDF_TARGET_ESP32S3
-        if ((index >= 0 && index <= 21) || (index >= 35 && index <= 48)) {
+        if ((index <= 21) || (index >= 35 && index <= 48)) {
             return PinCapabilities::Native | PinCapabilities::Input | PinCapabilities::Output | PinCapabilities::PullUp |
                    PinCapabilities::PullDown | PinCapabilities::PWM | PinCapabilities::ISR | PinCapabilities::UART |
                    (index <= 20 ? PinCapabilities::ADC : PinCapabilities::None);

@@ -37,3 +37,10 @@ data-wmb/
 /gcode_tests/venv
 release/
 .venv/
+
+# ESP-IDF generated files
+sdkconfig
+sdkconfig.old
+sdkconfig.*.old
+dependencies.lock
+managed_components/
