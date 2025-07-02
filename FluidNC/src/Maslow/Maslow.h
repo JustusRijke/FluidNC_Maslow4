@@ -26,6 +26,7 @@ public:
     // Reporting
     bool report_status = false;  // General status report
     bool report_HWM = false;  // Report high water mark of the task stack
+    bool report_RTS    = false;  // Report FreeRTOS run time statistics
 
     // Commands
     bool cmd_reset = false;

@@ -6,6 +6,7 @@
 
 #include "../Logging.h"
 #include "../System.h"
+#include <freertos/task.h>
 
 // TODO: Remove after debugging
 extern TaskHandle_t maslowTaskHandle;
@@ -71,6 +72,16 @@ void Maslow::update() {
     if (report_status) {
         p_log_info("State=" << _state_names[static_cast<uint16_t>(_sm.state)]);
         report_status = false;
+    }
+
+    if (report_RTS) {
+        // Log FreeRTOS run time statistics
+        char buffer[500];  // Adjust size as needed
+        vTaskList(buffer);
+        p_log_info("\n--- Task List ---\nTask Name\tStatus\tPrio\tStackHWM\tTaskNum\n" << buffer);
+        vTaskGetRunTimeStats(buffer);
+        p_log_info("\n--- Runtime Stats ---\nTask Name\tCPU_Ticks\tPercentage\n" << buffer);
+        report_RTS = false;
     }
 
     // Reset command - always wins
@@ -194,6 +205,7 @@ void Maslow::group(Configuration::HandlerBase& handler) {
     // Reporting
     handler.item("report_status", report_status);
     handler.item("report_HWM", report_HWM);
+    handler.item("report_RTS", report_RTS);
 
     // Commands
     handler.item("cmd_reset", cmd_reset);
